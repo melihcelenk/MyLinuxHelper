@@ -1,6 +1,6 @@
-#!/bin/bash
-# setup.sh — Install commands by creating symlinks into ~/.local/bin (no aliases)
-# and re-exec a fresh login shell so commands are immediately available.
+#!/usr/bin/env bash
+# setup.sh — Symlink commands into ~/.local/bin (no aliases), then re-exec login shell.
+# Optional: set MLH_INSTALL_USR_LOCAL=1 to also link into /usr/local/bin (needs sudo).
 
 set -euo pipefail
 
@@ -10,7 +10,7 @@ LOCAL_BIN="$HOME/.local/bin"
 BASHRC="$HOME/.bashrc"
 PROFILE="$HOME/.profile"
 
-# 1) Ensure ~/.local/bin exists and will be on PATH for future shells
+# 1) Ensure ~/.local/bin exists and added to PATH for future shells
 mkdir -p "$LOCAL_BIN"
 ADD_LINE='export PATH="$HOME/.local/bin:$PATH"'
 grep -Fq "$ADD_LINE" "$BASHRC" 2>/dev/null || { echo "$ADD_LINE" >> "$BASHRC"; echo "Added ~/.local/bin to PATH in ~/.bashrc"; }
@@ -26,6 +26,7 @@ declare -A LINKS=(
   ["$LOCAL_BIN/i"]="$ROOT_DIR/install.sh"
   ["$LOCAL_BIN/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
   ["$LOCAL_BIN/ll"]="$PLUGINS_DIR/ll.sh"
+  ["$LOCAL_BIN/linux"]="$PLUGINS_DIR/linux.sh"
 )
 
 for link in "${!LINKS[@]}"; do
@@ -35,12 +36,14 @@ for link in "${!LINKS[@]}"; do
   echo "Linked: $(basename "$link") → $target"
 done
 
-# 4) Optional immediate fallback into /usr/local/bin (if sudo available)
-if command -v sudo >/dev/null 2>&1; then
+# 4) (Optional) /usr/local/bin fallback — only if explicitly requested
+if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; then
+  echo "Linking into /usr/local/bin (requested via MLH_INSTALL_USR_LOCAL=1)..."
   declare -A ULINKS=(
     ["/usr/local/bin/i"]="$ROOT_DIR/install.sh"
     ["/usr/local/bin/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
     ["/usr/local/bin/ll"]="$PLUGINS_DIR/ll.sh"
+    ["/usr/local/bin/linux"]="$PLUGINS_DIR/linux.sh"
   )
   for link in "${!ULINKS[@]}"; do
     target="${ULINKS[$link]}"
@@ -49,17 +52,24 @@ if command -v sudo >/dev/null 2>&1; then
   done
 fi
 
-# 5) If this session still can't see commands (typical in WSL),
-#    seamlessly re-exec a fresh login shell (no manual 'source' needed).
+# 5) If current session still can't see commands, re-exec a fresh login shell
 need_reload=0
-for bin in i isjsonvalid ll; do
+for bin in i isjsonvalid ll linux; do
   if ! command -v "$bin" >/dev/null 2>&1; then
-    need_reload=1
-    break
+    need_reload=1; break
   fi
 done
 
-echo "✅ Setup complete. Available commands: i, isjsonvalid, ll"
+echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux"
+echo ""
+echo "Examples:"
+echo "  linux mycontainer           # Create ephemeral container (default)"
+echo "  linux -p mycontainer        # Create permanent container"
+echo "  linux -s mycontainer        # Stop container"
+echo ""
+echo "  i nginx                     # Install package using system package manager"
+echo "  isjsonvalid data.json       # Validate JSON file"
+echo "  ll /var/log                 # List directory contents with details"
 
 if [ "$need_reload" -eq 1 ] && [ -t 1 ] && [ -z "${MLH_RELOADED:-}" ]; then
   echo "↻ Opening a fresh login shell so commands are available immediately..."
