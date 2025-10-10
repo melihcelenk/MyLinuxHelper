@@ -1,24 +1,34 @@
 # MyLinuxHelper
 
-Use Linux easily.
+A lightweight and modular collection of utility tools to simplify your Linux experience.
 
-## Quick Setup
+## Features
 
+- **JSON Validation**: Quickly validate JSON files with the `isjsonvalid` command
+- **Enhanced Directory Listing**: View detailed file and directory information with the `ll` command (ls -la shortcut)
+- **Smart Package Manager**: Automatically detects and uses apt, yum, dnf, or other package managers with the `i` command
+- Lightweight and modular plugin system
+- Easy installation and usage
+- Extensible architecture for adding custom commands
+
+## ⚡ Quick Setup
+Run the command below:
 ```bash
-chmod +x setup.sh
-./setup.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/melihcelenk/MyLinuxHelper/main/get-mlh.sh)" \
+|| bash -c "$(wget -qO- https://raw.githubusercontent.com/melihcelenk/MyLinuxHelper/main/get-mlh.sh)"
 ```
 
-## Example Usage
+## 🚀 Usage
 
-```bash
-isjsonvalid a.json
-ll /etc
-```
+1. Start using:
+    ```bash
+    isjsonvalid data.json
+    ll /etc
+    i --help
+    i net-tools
+    ```
 
-## Linux Utility Plugins
 
-A lightweight, modular plugin system for Linux shell environments.
 
 ## 📦 Structure
 
@@ -31,19 +41,3 @@ A lightweight, modular plugin system for Linux shell environments.
     └── ll.sh           # Shortcut for "ls -la"
 ```
 
-## 🚀 Usage
-
-1. Give execute permission **only once**:
-    ```bash
-    chmod +x setup.sh
-    ```
-2. Run setup:
-    ```bash
-    ./setup.sh
-    ```
-3. Start using:
-    ```bash
-    isjsonvalid data.json
-    ll /etc
-    i net-tools 
-    ```
