@@ -67,8 +67,50 @@ die() { echo "Error: $*" >&2; exit 1; }
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 ensure_docker() {
-  have_cmd docker || die "Docker is required but not found in PATH."
+  if command -v docker >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "⚠️  This command requires Docker."
+  echo "1. Install Docker and run (i docker.io)"
+  echo "2. Install Docker only"
+  echo "3. Exit"
+  read -rp "Enter choice [1-3]: " choice
+
+  case "$choice" in
+    1)
+      if command -v i >/dev/null 2>&1; then
+        echo "Installing docker.io..."
+        i docker.io || { echo "❌ Docker installation failed."; exit 1; }
+        echo "✅ Docker installed successfully. Continuing..."
+        return 0
+      else
+        echo "Error: 'i' command not found. Please run setup.sh first or install docker manually."
+        exit 1
+      fi
+      ;;
+    2)
+      if command -v i >/dev/null 2>&1; then
+        echo "Installing docker.io..."
+        i docker.io || { echo "❌ Docker installation failed."; exit 1; }
+        echo "✅ Docker installed successfully. Exiting now."
+        exit 0
+      else
+        echo "Error: 'i' command not found. Please run setup.sh first or install docker manually."
+        exit 1
+      fi
+      ;;
+    3)
+      echo "Exiting without changes."
+      exit 0
+      ;;
+    *)
+      echo "Invalid choice. Exiting."
+      exit 1
+      ;;
+  esac
 }
+
 
 # Resolve repo root to optionally mount /opt/mlh
 resolve_mlh_root() {
