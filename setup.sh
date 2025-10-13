@@ -27,6 +27,7 @@ declare -A LINKS=(
   ["$LOCAL_BIN/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
   ["$LOCAL_BIN/ll"]="$PLUGINS_DIR/ll.sh"
   ["$LOCAL_BIN/linux"]="$PLUGINS_DIR/linux.sh"
+  ["$LOCAL_BIN/mlh"]="$PLUGINS_DIR/mlh.sh"
 )
 
 for link in "${!LINKS[@]}"; do
@@ -44,6 +45,7 @@ if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; t
     ["/usr/local/bin/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
     ["/usr/local/bin/ll"]="$PLUGINS_DIR/ll.sh"
     ["/usr/local/bin/linux"]="$PLUGINS_DIR/linux.sh"
+    ["/usr/local/bin/mlh"]="$PLUGINS_DIR/mlh.sh"
   )
   for link in "${!ULINKS[@]}"; do
     target="${ULINKS[$link]}"
@@ -54,19 +56,20 @@ fi
 
 # 5) If current session still can't see commands, re-exec a fresh login shell
 need_reload=0
-for bin in i isjsonvalid ll linux; do
+for bin in i isjsonvalid ll linux mlh; do
   if ! command -v "$bin" >/dev/null 2>&1; then
     need_reload=1; break
   fi
 done
 
-echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux"
+echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux, mlh"
 echo ""
 echo "Examples:"
 echo "  linux mycontainer           # Create ephemeral container (default)"
 echo "  linux -p mycontainer        # Create permanent container"
 echo "  linux -s mycontainer        # Stop container"
 echo ""
+echo "  mlh docker in asd           # Enter running container by name pattern"
 echo "  i nginx                     # Install package using system package manager"
 echo "  isjsonvalid data.json       # Validate JSON file"
 echo "  ll /var/log                 # List directory contents with details"
