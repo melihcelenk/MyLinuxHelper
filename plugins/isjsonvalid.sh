@@ -25,10 +25,15 @@ Usage: isjsonvalid <file.json>
        isjsonvalid --help
 
 Checks if the given file is valid JSON using 'jq'.
+
 Output:
   - "Yes"  if JSON is valid
   - "No"   if JSON is invalid
   - "Error: \"<file>\" not found" if file is missing
+
+Examples:
+  isjsonvalid data.json       # Validate single file
+  isjsonvalid *.json          # Validate multiple files
 EOF
 }
 

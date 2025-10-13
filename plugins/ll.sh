@@ -2,8 +2,16 @@
 # ll.sh — Simple ls -la shortcut.
 
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-  echo "Usage: ll [path]"
-  echo "Lists files with 'ls -la'."
+  cat <<'EOF'
+Usage: ll [path]
+
+Enhanced directory listing - shortcut for 'ls -la'.
+
+Examples:
+  ll                          # List current directory
+  ll /var/log                 # List specific directory
+  ll *.json                   # List with pattern
+EOF
   exit 0
 fi
 

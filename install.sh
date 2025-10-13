@@ -85,8 +85,18 @@ _install_do() {
 i() {
   # help first
   if [ $# -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    echo "Usage: i <package> [<package> ...]"
-    echo "Installs packages using the detected package manager (apt, dnf, yum, zypper, pacman, apk)."
+    cat <<'EOF'
+Usage: i <package> [<package> ...]
+
+Smart package installer - automatically detects your package manager.
+
+Supported package managers:
+  apt, apt-get, dnf, yum, zypper, pacman, apk
+
+Examples:
+  i nginx                     # Install nginx
+  i git curl wget             # Install multiple packages
+EOF
     return 0
   fi
 
@@ -104,8 +114,18 @@ i() {
 # CLI mode when executed directly (symlink ~/.local/bin/i -> install.sh)
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
   if [ "$#" -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    echo "Usage: i <package> [<package> ...]"
-    echo "Installs packages using: apt | apt-get | dnf | yum | zypper | pacman | apk"
+    cat <<'EOF'
+Usage: i <package> [<package> ...]
+
+Smart package installer - automatically detects your package manager.
+
+Supported package managers:
+  apt, apt-get, dnf, yum, zypper, pacman, apk
+
+Examples:
+  i nginx                     # Install nginx
+  i git curl wget             # Install multiple packages
+EOF
     exit 0
   fi
   i "$@"
