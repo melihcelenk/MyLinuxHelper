@@ -26,8 +26,21 @@ Commands:
                   If multiple containers match, shows interactive menu.
 
 Examples:
-  mlh docker in asd           # Enter container with 'asd' in name
-  mlh docker in mycontainer   # Enter container with 'mycontainer' in name
+  mlh docker in web           # Enter container with 'web' in name
+
+  # If multiple containers match 'mycontainer':
+  mlh docker in mycontainer
+
+  Output:
+    Multiple containers found matching 'mycontainer':
+
+      1. mycontainer-web (nginx:latest | Up 2 hours)
+      2. mycontainer-api (node:18 | Up 2 hours)
+      3. mycontainer-db (postgres:14 | Up 2 hours)
+
+    Select container [1-3]: 1
+
+    Entering container: mycontainer-web
 EOF
 }
 
