@@ -4,6 +4,7 @@
 # Usage:
 #   mlh <category> <command> [args...]
 #   mlh --help
+#   mlh --version
 #
 # Categories:
 #   docker    Docker shortcuts (see: mlh docker --help)
@@ -12,6 +13,8 @@
 #   mlh docker in mycontainer
 
 set -euo pipefail
+
+VERSION="1.1.1"
 
 # Resolve script directory (handle symlinks)
 resolve_script_dir() {
@@ -33,12 +36,13 @@ resolve_script_dir() {
 SCRIPT_DIR="$(resolve_script_dir)"
 
 print_help() {
-  cat <<'EOF'
-mlh - MyLinuxHelper shortcut commands
+  cat <<EOF
+mlh - MyLinuxHelper shortcut commands (v$VERSION)
 
 Usage:
   mlh <category> <command> [args...]
   mlh --help
+  mlh --version
 
 Categories:
   docker    Docker shortcuts (see: mlh docker --help)
@@ -46,6 +50,10 @@ Categories:
 Examples:
   mlh docker in mycontainer    # Enter a running container by name pattern
 EOF
+}
+
+print_version() {
+  echo "MyLinuxHelper v$VERSION"
 }
 
 show_interactive_menu() {
@@ -105,6 +113,10 @@ shift
 case "$CATEGORY" in
   -h|--help)
     print_help
+    exit 0
+    ;;
+  -v|--version)
+    print_version
     exit 0
     ;;
   docker)
