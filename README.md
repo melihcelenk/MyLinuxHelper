@@ -6,6 +6,7 @@ A lightweight and modular collection of utility tools to simplify your Linux exp
 
 - **Interactive Command Menu**: Browse and explore all commands with the `mlh` interactive menu
 - **Smart Docker Management**: Quickly enter running containers by name pattern with `mlh docker in`
+- **Fast File Search**: Find files quickly in current directory and subdirectories with the `search` command
 - **Isolated Linux Containers**: Quickly launch and manage Linux containers with the `linux` command
 - **Smart Package Manager**: Automatically detects and uses apt, yum, dnf, or other package managers with the `i` command
 - **JSON Validation**: Quickly validate JSON files with the `isjsonvalid` command
@@ -127,6 +128,22 @@ ll /var/log
 ll *.json
 ```
 
+#### `search` - Fast File Search
+Find files quickly in current directory and subdirectories:
+```bash
+# Search for file by name
+search myfile
+
+# Search for files with wildcard pattern
+search "*.json"
+
+# Search in specific directory
+search config.js ./src
+
+# Search for configuration files in /etc
+search "*.conf" /etc
+```
+
 
 
 ## 📦 Structure
@@ -139,6 +156,7 @@ ll *.json
     ├── mlh.sh          # Interactive menu and command dispatcher
     ├── mlh-docker.sh   # Docker shortcuts and container management
     ├── linux.sh        # Launch and manage Docker containers
+    ├── search.sh       # Fast file search using find
     ├── isjsonvalid.sh  # Validate JSON files using jq
     └── ll.sh           # Shortcut for "ls -la"
 ```
