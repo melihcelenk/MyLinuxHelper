@@ -4,6 +4,8 @@ A lightweight and modular collection of utility tools to simplify your Linux exp
 
 ## Features
 
+- **Interactive Command Menu**: Browse and explore all commands with the `mlh` interactive menu
+- **Smart Docker Management**: Quickly enter running containers by name pattern with `mlh docker in`
 - **Isolated Linux Containers**: Quickly launch and manage Linux containers with the `linux` command
 - **Smart Package Manager**: Automatically detects and uses apt, yum, dnf, or other package managers with the `i` command
 - **JSON Validation**: Quickly validate JSON files with the `isjsonvalid` command
@@ -22,6 +24,50 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/melihcelenk/MyLinuxHelpe
 ## 🚀 Usage
 
 ### Available Commands
+
+#### `mlh` - Interactive Command Menu
+Browse all available commands interactively:
+```bash
+# Show interactive menu
+mlh
+
+# Show version
+mlh -v
+mlh --version
+
+# Docker shortcuts
+mlh docker in <pattern>
+```
+
+**Interactive Menu Example:**
+```
+MyLinuxHelper - Available Commands
+===================================
+
+1. linux <name>              - Create and manage Linux containers
+2. i <package>               - Install packages (auto-detects package manager)
+3. isjsonvalid <file.json>   - Validate JSON files
+4. ll [path]                 - Enhanced directory listing (ls -la)
+5. mlh docker in <pattern>   - Enter running Docker container
+
+Select [1-5, q]:
+```
+
+#### `mlh docker in` - Smart Container Access
+Enter running Docker containers by name pattern:
+```bash
+# Enter container by name
+mlh docker in web
+
+# If multiple containers match, shows interactive menu:
+# Multiple containers found matching 'mycontainer':
+#
+#   1. mycontainer-web (nginx:latest | Up 2 hours)
+#   2. mycontainer-api (node:18 | Up 2 hours)
+#   3. mycontainer-db (postgres:14 | Up 2 hours)
+#
+# Select container [1-3]: 1
+```
 
 #### `linux` - Container Management
 Launch and manage isolated Linux containers quickly:
@@ -90,6 +136,8 @@ ll *.json
 ├── setup.sh            # Main setup script
 ├── install.sh          # Universal package installer
 └── plugins/
+    ├── mlh.sh          # Interactive menu and command dispatcher
+    ├── mlh-docker.sh   # Docker shortcuts and container management
     ├── linux.sh        # Launch and manage Docker containers
     ├── isjsonvalid.sh  # Validate JSON files using jq
     └── ll.sh           # Shortcut for "ls -la"
