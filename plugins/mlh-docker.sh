@@ -9,7 +9,7 @@
 #   in <pattern>    Enter a running container by name pattern
 #
 # Examples:
-#   mlh docker in asd    # Enter container with 'asd' in name
+#   mlh docker in mycontainer    # Enter container with 'mycontainer' in name
 
 set -euo pipefail
 

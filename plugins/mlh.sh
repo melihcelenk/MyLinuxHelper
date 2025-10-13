@@ -62,15 +62,16 @@ MyLinuxHelper - Available Commands
 ===================================
 
 1. linux <name>              - Create and manage Linux containers
-2. i <package>               - Install packages (auto-detects package manager)
-3. isjsonvalid <file.json>   - Validate JSON files
-4. ll [path]                 - Enhanced directory listing (ls -la)
-5. mlh docker in <pattern>   - Enter running Docker container
+2. search <pattern>          - Fast file search in directories
+3. i <package>               - Install packages (auto-detects package manager)
+4. isjsonvalid <file.json>   - Validate JSON files
+5. ll [path]                 - Enhanced directory listing (ls -la)
+6. mlh docker in <pattern>   - Enter running Docker container
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-  read -rp "Select [1-5, q]: " SELECTION
+  read -rp "Select [1-6, q]: " SELECTION
 
   echo ""
 
@@ -79,15 +80,18 @@ EOF
       "$SCRIPT_DIR/linux.sh" --help
       ;;
     2)
-      "$SCRIPT_DIR/../install.sh" --help
+      "$SCRIPT_DIR/search.sh" --help
       ;;
     3)
-      "$SCRIPT_DIR/isjsonvalid.sh" --help
+      "$SCRIPT_DIR/../install.sh" --help
       ;;
     4)
-      "$SCRIPT_DIR/ll.sh" --help
+      "$SCRIPT_DIR/isjsonvalid.sh" --help
       ;;
     5)
+      "$SCRIPT_DIR/ll.sh" --help
+      ;;
+    6)
       "$SCRIPT_DIR/mlh-docker.sh" --help
       ;;
     q|Q)
