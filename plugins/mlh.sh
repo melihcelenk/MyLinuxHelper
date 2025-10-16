@@ -14,8 +14,6 @@
 
 set -euo pipefail
 
-VERSION="1.1.1"
-
 # Resolve script directory (handle symlinks)
 resolve_script_dir() {
   local source="$0"
@@ -37,27 +35,81 @@ SCRIPT_DIR="$(resolve_script_dir)"
 
 print_help() {
   cat <<EOF
-mlh - MyLinuxHelper shortcut commands (v$VERSION)
+mlh - MyLinuxHelper shortcut commands
 
 Usage:
-  mlh <category> <command> [args...]
-  mlh --help
-  mlh --version
+  mlh                          Show interactive menu
+  mlh <category> <command>     Run category command
+  mlh --help                   Show this help
+  mlh --version                Show version
+  mlh about                    Show project information
+  mlh update                   Update to latest version
 
 Categories:
   docker    Docker shortcuts (see: mlh docker --help)
 
 Examples:
+  mlh                          # Show interactive menu
+  mlh --version                # Show current version
+  mlh about                    # Show project information and credits
+  mlh update                   # Update to latest version
   mlh docker in mycontainer    # Enter a running container by name pattern
 EOF
 }
 
 print_version() {
-  echo "MyLinuxHelper v$VERSION"
+  exec "$SCRIPT_DIR/mlh-version.sh" "$@"
+}
+
+show_about() {
+  "$SCRIPT_DIR/mlh-about.sh"
+}
+
+show_app_settings_menu() {
+  while true; do
+    cat <<'EOF'
+
+MyLinuxHelper - App Settings & Updates
+=======================================
+
+1. Show current version
+2. Update to latest version
+3. Configure periodic updates
+4. Back to main menu
+
+EOF
+
+    read -rp "Select [1-4]: " SETTING_SELECTION
+    echo ""
+
+    case "$SETTING_SELECTION" in
+      1)
+        "$SCRIPT_DIR/mlh-version.sh"
+        echo ""
+        read -rp "Press Enter to continue..."
+        ;;
+      2)
+        exec "$SCRIPT_DIR/mlh-version.sh" update
+        ;;
+      3)
+        exec "$SCRIPT_DIR/mlh-version.sh" update -p
+        ;;
+      4|b|B)
+        return 0
+        ;;
+      *)
+        echo "Invalid selection: $SETTING_SELECTION"
+        echo ""
+        read -rp "Press Enter to continue..."
+        ;;
+    esac
+  done
 }
 
 show_interactive_menu() {
-  cat <<'EOF'
+  while true; do
+    cat <<'EOF'
+
 MyLinuxHelper - Available Commands
 ===================================
 
@@ -67,42 +119,50 @@ MyLinuxHelper - Available Commands
 4. isjsonvalid <file.json>   - Validate JSON files
 5. ll [path]                 - Enhanced directory listing (ls -la)
 6. mlh docker in <pattern>   - Enter running Docker container
+7. About MyLinuxHelper       - Project information and credits
+8. App Settings & Updates    - Version and update settings
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-  read -rp "Select [1-6, q]: " SELECTION
+    read -rp "Select [1-8, q]: " SELECTION
 
-  echo ""
+    echo ""
 
-  case "$SELECTION" in
-    1)
-      "$SCRIPT_DIR/linux.sh" --help
-      ;;
-    2)
-      "$SCRIPT_DIR/search.sh" --help
-      ;;
-    3)
-      "$SCRIPT_DIR/../install.sh" --help
-      ;;
-    4)
-      "$SCRIPT_DIR/isjsonvalid.sh" --help
-      ;;
-    5)
-      "$SCRIPT_DIR/ll.sh" --help
-      ;;
-    6)
-      "$SCRIPT_DIR/mlh-docker.sh" --help
-      ;;
-    q|Q)
-      echo "Goodbye!"
-      exit 0
-      ;;
-    *)
-      echo "Invalid selection: $SELECTION"
-      exit 1
-      ;;
-  esac
+    case "$SELECTION" in
+      1)
+        "$SCRIPT_DIR/linux.sh" --help
+        ;;
+      2)
+        "$SCRIPT_DIR/search.sh" --help
+        ;;
+      3)
+        "$SCRIPT_DIR/../install.sh" --help
+        ;;
+      4)
+        "$SCRIPT_DIR/isjsonvalid.sh" --help
+        ;;
+      5)
+        "$SCRIPT_DIR/ll.sh" --help
+        ;;
+      6)
+        "$SCRIPT_DIR/mlh-docker.sh" --help
+        ;;
+      7)
+        show_about
+        ;;
+      8)
+        show_app_settings_menu
+        ;;
+      q|Q)
+        echo "Goodbye!"
+        exit 0
+        ;;
+      *)
+        echo "Invalid selection: $SELECTION"
+        ;;
+    esac
+  done
 }
 
 # Parse arguments
@@ -120,8 +180,15 @@ case "$CATEGORY" in
     exit 0
     ;;
   -v|--version)
-    print_version
-    exit 0
+    print_version "$@"
+    ;;
+  about)
+    # Delegate to about script
+    exec "$SCRIPT_DIR/mlh-about.sh" --no-prompt
+    ;;
+  update)
+    # Delegate to version script for updates
+    exec "$SCRIPT_DIR/mlh-version.sh" update "$@"
     ;;
   docker)
     # Delegate to mlh-docker.sh
