@@ -14,8 +14,6 @@
 
 set -euo pipefail
 
-VERSION="1.1.1"
-
 # Resolve script directory (handle symlinks)
 resolve_script_dir() {
   local source="$0"
@@ -37,23 +35,28 @@ SCRIPT_DIR="$(resolve_script_dir)"
 
 print_help() {
   cat <<EOF
-mlh - MyLinuxHelper shortcut commands (v$VERSION)
+mlh - MyLinuxHelper shortcut commands
 
 Usage:
-  mlh <category> <command> [args...]
-  mlh --help
-  mlh --version
+  mlh                          Show interactive menu
+  mlh <category> <command>     Run category command
+  mlh --help                   Show this help
+  mlh --version                Show version
+  mlh update                   Update to latest version
 
 Categories:
   docker    Docker shortcuts (see: mlh docker --help)
 
 Examples:
+  mlh                          # Show interactive menu
+  mlh --version                # Show current version
+  mlh update                   # Update to latest version
   mlh docker in mycontainer    # Enter a running container by name pattern
 EOF
 }
 
 print_version() {
-  echo "MyLinuxHelper v$VERSION"
+  exec "$SCRIPT_DIR/mlh-version.sh" "$@"
 }
 
 show_interactive_menu() {
@@ -67,11 +70,13 @@ MyLinuxHelper - Available Commands
 4. isjsonvalid <file.json>   - Validate JSON files
 5. ll [path]                 - Enhanced directory listing (ls -la)
 6. mlh docker in <pattern>   - Enter running Docker container
+7. mlh --version             - Show current version
+8. mlh update                - Update to latest version
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-  read -rp "Select [1-6, q]: " SELECTION
+  read -rp "Select [1-8, q]: " SELECTION
 
   echo ""
 
@@ -93,6 +98,12 @@ EOF
       ;;
     6)
       "$SCRIPT_DIR/mlh-docker.sh" --help
+      ;;
+    7)
+      exec "$SCRIPT_DIR/mlh-version.sh"
+      ;;
+    8)
+      exec "$SCRIPT_DIR/mlh-version.sh" update
       ;;
     q|Q)
       echo "Goodbye!"
@@ -120,8 +131,11 @@ case "$CATEGORY" in
     exit 0
     ;;
   -v|--version)
-    print_version
-    exit 0
+    print_version "$@"
+    ;;
+  update)
+    # Delegate to version script for updates
+    exec "$SCRIPT_DIR/mlh-version.sh" update
     ;;
   docker)
     # Delegate to mlh-docker.sh

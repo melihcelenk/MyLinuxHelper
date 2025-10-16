@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# mlh-version.sh — Version management for MyLinuxHelper
+#
+# Usage:
+#   mlh-version.sh [--version|-v]
+#   mlh-version.sh update
+#   mlh --version update
+#   mlh -v update
+#
+# Commands:
+#   (no args)     Display current version
+#   update        Update to the latest version from GitHub
+
+set -euo pipefail
+
+readonly VERSION="1.3.0"
+readonly GITHUB_REPO="melihcelenk/MyLinuxHelper"
+readonly INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/get-mlh.sh"
+
+print_version() {
+  echo "MyLinuxHelper v${VERSION}"
+}
+
+print_help() {
+  cat <<EOF
+mlh version - Version management (v${VERSION})
+
+Usage:
+  mlh --version              Show current version
+  mlh -v                     Show current version
+  mlh --version update       Update to latest version
+  mlh -v update              Update to latest version
+  mlh update                 Update to latest version
+
+Examples:
+  mlh --version              # Display: MyLinuxHelper v1.1.1
+  mlh --version update       # Update to latest version from GitHub
+EOF
+}
+
+update_to_latest() {
+  echo "Checking for updates from GitHub..."
+  echo ""
+
+  if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
+    echo "Error: Neither curl nor wget is available. Please install one of them." >&2
+    exit 1
+  fi
+
+  echo "Current version: ${VERSION}"
+  echo "Downloading latest version from GitHub..."
+  echo ""
+
+  local temp_script
+  temp_script="$(mktemp)"
+
+  if command -v curl &> /dev/null; then
+    if ! curl -fsSL "${INSTALL_SCRIPT_URL}" -o "${temp_script}"; then
+      echo "Error: Failed to download installation script." >&2
+      rm -f "${temp_script}"
+      exit 1
+    fi
+  else
+    if ! wget -qO "${temp_script}" "${INSTALL_SCRIPT_URL}"; then
+      echo "Error: Failed to download installation script." >&2
+      rm -f "${temp_script}"
+      exit 1
+    fi
+  fi
+
+  echo "Running installation script..."
+  echo ""
+
+  if bash "${temp_script}"; then
+    rm -f "${temp_script}"
+    echo ""
+    echo "Update completed successfully!"
+    echo "Please restart your shell or run: source ~/.bashrc"
+  else
+    rm -f "${temp_script}"
+    echo "Error: Update failed." >&2
+    exit 1
+  fi
+}
+
+main() {
+  if [ $# -eq 0 ]; then
+    print_version
+    exit 0
+  fi
+
+  case "$1" in
+    -h|--help)
+      print_help
+      exit 0
+      ;;
+    update|latest)
+      update_to_latest
+      exit 0
+      ;;
+    *)
+      echo "Error: Unknown command '$1'" >&2
+      echo "Run 'mlh --version --help' for usage information." >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"
