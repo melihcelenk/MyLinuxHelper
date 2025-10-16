@@ -72,11 +72,12 @@ MyLinuxHelper - Available Commands
 6. mlh docker in <pattern>   - Enter running Docker container
 7. mlh --version             - Show current version
 8. mlh update                - Update to latest version
+9. mlh update -p             - Configure periodic updates
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-  read -rp "Select [1-8, q]: " SELECTION
+  read -rp "Select [1-9, q]: " SELECTION
 
   echo ""
 
@@ -104,6 +105,9 @@ EOF
       ;;
     8)
       exec "$SCRIPT_DIR/mlh-version.sh" update
+      ;;
+    9)
+      exec "$SCRIPT_DIR/mlh-version.sh" update -p
       ;;
     q|Q)
       echo "Goodbye!"
@@ -135,7 +139,7 @@ case "$CATEGORY" in
     ;;
   update)
     # Delegate to version script for updates
-    exec "$SCRIPT_DIR/mlh-version.sh" update
+    exec "$SCRIPT_DIR/mlh-version.sh" update "$@"
     ;;
   docker)
     # Delegate to mlh-docker.sh
