@@ -83,9 +83,10 @@ format_array_output() {
 format_object_output() {
     local path="$1"
     local value="$2"
-    # For objects, show: "Path"."Key": "value"
+    # For all types: "Path"."Key": value
+    # jq -c already returns valid JSON (strings with quotes, arrays/objects without extra quotes)
     local formatted_path=$(format_path "$path")
-    echo "${formatted_path}: \"${value}\""
+    echo "${formatted_path}: ${value}"
 }
 
 # Function to perform fuzzy search on field names
