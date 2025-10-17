@@ -47,6 +47,7 @@ Usage:
 
 Categories:
   docker    Docker shortcuts (see: mlh docker --help)
+  json      JSON operations (see: mlh json --help)
 
 Examples:
   mlh                          # Show interactive menu
@@ -116,7 +117,7 @@ MyLinuxHelper - Available Commands
 1. linux <name>              - Create and manage Linux containers
 2. search <pattern>          - Fast file search in directories
 3. i <package>               - Install packages (auto-detects package manager)
-4. isjsonvalid <file.json>   - Validate JSON files
+4. JSON operations           - Validate and search JSON files
 5. ll [path]                 - Enhanced directory listing (ls -la)
 6. mlh docker in <pattern>   - Enter running Docker container
 7. About MyLinuxHelper       - Project information and credits
@@ -132,21 +133,27 @@ EOF
     case "$SELECTION" in
       1)
         "$SCRIPT_DIR/linux.sh" --help
+        exit 0
         ;;
       2)
         "$SCRIPT_DIR/search.sh" --help
+        exit 0
         ;;
       3)
         "$SCRIPT_DIR/../install.sh" --help
+        exit 0
         ;;
       4)
-        "$SCRIPT_DIR/isjsonvalid.sh" --help
+        "$SCRIPT_DIR/mlh-json.sh" --help
+        exit 0
         ;;
       5)
         "$SCRIPT_DIR/ll.sh" --help
+        exit 0
         ;;
       6)
         "$SCRIPT_DIR/mlh-docker.sh" --help
+        exit 0
         ;;
       7)
         show_about
@@ -160,6 +167,8 @@ EOF
         ;;
       *)
         echo "Invalid selection: $SELECTION"
+        echo ""
+        read -rp "Press Enter to continue..."
         ;;
     esac
   done
@@ -193,6 +202,10 @@ case "$CATEGORY" in
   docker)
     # Delegate to mlh-docker.sh
     exec "$SCRIPT_DIR/mlh-docker.sh" "$@"
+    ;;
+  json)
+    # Delegate to mlh-json.sh
+    exec "$SCRIPT_DIR/mlh-json.sh" "$@"
     ;;
   *)
     echo "Error: Unknown category '$CATEGORY'" >&2

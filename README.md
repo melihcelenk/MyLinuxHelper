@@ -9,7 +9,7 @@ A lightweight and modular collection of utility tools to simplify your Linux exp
 - **Fast File Search**: Find files quickly in current directory and subdirectories with the `search` command
 - **Isolated Linux Containers**: Quickly launch and manage Linux containers with the `linux` command
 - **Smart Package Manager**: Automatically detects and uses apt, yum, dnf, or other package managers with the `i` command
-- **JSON Validation**: Quickly validate JSON files with the `isjsonvalid` command
+- **Advanced JSON Operations**: Validate and search JSON files with fuzzy matching and intelligent path navigation
 - **Enhanced Directory Listing**: View detailed file and directory information with the `ll` command (ls -la shortcut)
 - Lightweight and modular plugin system
 - Easy installation and usage
@@ -105,15 +105,49 @@ i git curl wget
 i --help
 ```
 
-#### `isjsonvalid` - JSON Validator
-Validate JSON files using jq:
+#### `mlh json` / `isjsonvalid` - JSON Operations
+Advanced JSON validation and fuzzy search with intelligent path navigation:
 ```bash
-# Validate a JSON file
+# Quick validation (Yes/No output)
 isjsonvalid data.json
+# Output: Yes
 
-# Validate multiple files
-isjsonvalid file1.json file2.json
+# Detailed validation
+isjsonvalid -d data.json
+mlh json --isvalid data.json
+# Output: ✓ Valid JSON
+
+# Search for a field (fuzzy match, case-insensitive)
+mlh json get name from users.json
+# Output: "users"."name": "John"
+
+# Partial key matching - finds "RequestedTags" with just "req"
+mlh json get req from config.json
+# Output: "RequestedTags": [...]
+
+# Search with path hint (targeted search, no menu)
+mlh json get settings.lang from config.json
+# Output: "settings"."language": "en"
+
+# Multiple matches - shows interactive menu
+mlh json get user from data.json
+# Found 3 matches for 'user':
+# 1. "users": [...]
+# 2. "username": "john"
+# 3. "userProfile"."userId": "123"
+
+# Show help
+mlh json --help
 ```
+
+**Key Features:**
+- **Centralized validation**: Both `isjsonvalid` and `mlh json --isvalid` use the same engine
+- **Flexible output modes**: Quick (Yes/No) or detailed (with colors and error messages)
+- Searches ALL JSON keys (arrays, objects, scalars)
+- Fuzzy and partial matching (e.g., `req` → `RequestedTags`)
+- Path hints for targeted search
+- Interactive menu for multiple matches
+- Auto-installs `jq` if needed
 
 #### `ll` - Enhanced Directory Listing
 Shortcut for `ls -la` to view detailed file information:
@@ -155,9 +189,12 @@ search "*.conf" /etc
 └── plugins/
     ├── mlh.sh          # Interactive menu and command dispatcher
     ├── mlh-docker.sh   # Docker shortcuts and container management
+    ├── mlh-json.sh     # Advanced JSON search (delegates validation to isjsonvalid.sh)
+    ├── mlh-version.sh  # Version management and auto-update system
+    ├── mlh-about.sh    # Project information and about page
     ├── linux.sh        # Launch and manage Docker containers
     ├── search.sh       # Fast file search using find
-    ├── isjsonvalid.sh  # Validate JSON files using jq
+    ├── isjsonvalid.sh  # Centralized JSON validation with flexible output modes
     └── ll.sh           # Shortcut for "ls -la"
 ```
 
