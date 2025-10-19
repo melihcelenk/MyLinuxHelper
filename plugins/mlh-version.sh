@@ -14,8 +14,8 @@
 
 set -euo pipefail
 
-readonly VERSION="1.3.0"
-readonly VERSION_DATE="17.10.2025"
+readonly VERSION="1.4.0"
+readonly VERSION_DATE="20.10.2025"
 readonly FIRST_RELEASE_DATE="11.10.2025"
 readonly GITHUB_REPO="melihcelenk/MyLinuxHelper"
 readonly INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/get-mlh.sh"

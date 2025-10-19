@@ -48,6 +48,7 @@ Usage:
 Categories:
   docker    Docker shortcuts (see: mlh docker --help)
   json      JSON operations (see: mlh json --help)
+  history   Enhanced history formatting (see: mlh history --help)
 
 Examples:
   mlh                          # Show interactive menu
@@ -55,6 +56,7 @@ Examples:
   mlh about                    # Show project information and credits
   mlh update                   # Update to latest version
   mlh docker in mycontainer    # Enter a running container by name pattern
+  mlh history 10               # Show last 10 commands (numbered)
 EOF
 }
 
@@ -120,13 +122,14 @@ MyLinuxHelper - Available Commands
 4. JSON operations           - Validate and search JSON files
 5. ll [path]                 - Enhanced directory listing (ls -la)
 6. mlh docker in <pattern>   - Enter running Docker container
-7. About MyLinuxHelper       - Project information and credits
-8. App Settings & Updates    - Version and update settings
+7. mlh history [count]       - Enhanced command history with dates
+8. About MyLinuxHelper       - Project information and credits
+9. App Settings & Updates    - Version and update settings
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-    read -rp "Select [1-8, q]: " SELECTION
+    read -rp "Select [1-9, q]: " SELECTION
 
     echo ""
 
@@ -156,9 +159,13 @@ EOF
         exit 0
         ;;
       7)
-        show_about
+        "$SCRIPT_DIR/mlh-history.sh" --help
+        exit 0
         ;;
       8)
+        show_about
+        ;;
+      9)
         show_app_settings_menu
         ;;
       q|Q)
@@ -206,6 +213,10 @@ case "$CATEGORY" in
   json)
     # Delegate to mlh-json.sh
     exec "$SCRIPT_DIR/mlh-json.sh" "$@"
+    ;;
+  history)
+    # Delegate to mlh-history.sh
+    exec "$SCRIPT_DIR/mlh-history.sh" "$@"
     ;;
   *)
     echo "Error: Unknown category '$CATEGORY'" >&2
