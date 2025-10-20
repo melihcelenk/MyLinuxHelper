@@ -93,6 +93,16 @@ run_test_suite() {
 
   print_header "Running test suite: $suite_name"
 
+  # PRE-CHECK: Validate syntax before running
+  if ! bash -n "$test_file" 2>/dev/null; then
+    echo -e "${RED}✗ SYNTAX ERROR${NC}: Test suite has invalid bash syntax"
+    echo -e "${YELLOW}Likely cause: Windows line endings (CRLF)${NC}"
+    echo -e "${YELLOW}Fix with: sed -i 's/\\r\$//' $test_file${NC}"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    return 0  # Don't exit, just mark as failed and continue
+  fi
+
   # Source the test file which will call print_test_result for each test
   # shellcheck source=/dev/null
   source "$test_file"
