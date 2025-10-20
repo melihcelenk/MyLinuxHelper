@@ -28,14 +28,14 @@
 set -euo pipefail
 
 # Defaults
-MODE="tmp"                        # tmp | permanent | stop | delete
+MODE="tmp" # tmp | permanent | stop | delete
 IMAGE="ubuntu:24.04"
 MOUNTS=()
 MOUNT_MLH=1
 SHELL_BIN="bash"
 
 print_help() {
-  cat <<'EOF'
+	cat <<'EOF'
 Usage:
   linux [options] <name>
   linux --help
@@ -62,126 +62,168 @@ Examples:
 EOF
 }
 
-die() { echo "Error: $*" >&2; exit 1; }
+die() {
+	echo "Error: $*" >&2
+	exit 1
+}
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 ensure_docker() {
-  if command -v docker >/dev/null 2>&1; then
-    return 0
-  fi
+	if command -v docker >/dev/null 2>&1; then
+		return 0
+	fi
 
-  echo "⚠️  This command requires Docker."
-  echo "1. Install Docker and run (i docker.io)"
-  echo "2. Install Docker only"
-  echo "3. Exit"
-  read -rp "Enter choice [1-3]: " choice
+	echo "⚠️  This command requires Docker."
+	echo "1. Install Docker and run (i docker.io)"
+	echo "2. Install Docker only"
+	echo "3. Exit"
+	read -rp "Enter choice [1-3]: " choice
 
-  case "$choice" in
-    1)
-      if command -v i >/dev/null 2>&1; then
-        echo "Installing docker.io..."
-        i docker.io || { echo "❌ Docker installation failed."; exit 1; }
-        echo "✅ Docker installed successfully. Continuing..."
-        return 0
-      else
-        echo "Error: 'i' command not found. Please run setup.sh first or install docker manually."
-        exit 1
-      fi
-      ;;
-    2)
-      if command -v i >/dev/null 2>&1; then
-        echo "Installing docker.io..."
-        i docker.io || { echo "❌ Docker installation failed."; exit 1; }
-        echo "✅ Docker installed successfully. Exiting now."
-        exit 0
-      else
-        echo "Error: 'i' command not found. Please run setup.sh first or install docker manually."
-        exit 1
-      fi
-      ;;
-    3)
-      echo "Exiting without changes."
-      exit 0
-      ;;
-    *)
-      echo "Invalid choice. Exiting."
-      exit 1
-      ;;
-  esac
+	case "$choice" in
+	1)
+		if command -v i >/dev/null 2>&1; then
+			echo "Installing docker.io..."
+			i docker.io || {
+				echo "❌ Docker installation failed."
+				exit 1
+			}
+			echo "✅ Docker installed successfully. Continuing..."
+			return 0
+		else
+			echo "Error: 'i' command not found. Please run setup.sh first or install docker manually."
+			exit 1
+		fi
+		;;
+	2)
+		if command -v i >/dev/null 2>&1; then
+			echo "Installing docker.io..."
+			i docker.io || {
+				echo "❌ Docker installation failed."
+				exit 1
+			}
+			echo "✅ Docker installed successfully. Exiting now."
+			exit 0
+		else
+			echo "Error: 'i' command not found. Please run setup.sh first or install docker manually."
+			exit 1
+		fi
+		;;
+	3)
+		echo "Exiting without changes."
+		exit 0
+		;;
+	*)
+		echo "Invalid choice. Exiting."
+		exit 1
+		;;
+	esac
 }
-
 
 # Resolve repo root to optionally mount /opt/mlh
 resolve_mlh_root() {
-  local source="$0"
-  # In case called via symlink (e.g., ~/.local/bin/linux -> plugins/linux.sh):
-  while [ -L "$source" ]; do
-    local target
-    target="$(readlink "$source")"
-    if [[ "$target" = /* ]]; then
-      source="$target"
-    else
-      local dir
-      dir="$(cd -P "$(dirname "$source")" && pwd)"
-      source="$dir/$target"
-    fi
-  done
-  local plugin_dir
-  plugin_dir="$(cd -P "$(dirname "$source")" && pwd)"
-  # Root is one level up (repo root containing install.sh, setup.sh, plugins/)
-  echo "$(dirname "$plugin_dir")"
+	local source="$0"
+	# In case called via symlink (e.g., ~/.local/bin/linux -> plugins/linux.sh):
+	while [ -L "$source" ]; do
+		local target
+		target="$(readlink "$source")"
+		if [[ "$target" = /* ]]; then
+			source="$target"
+		else
+			local dir
+			dir="$(cd -P "$(dirname "$source")" && pwd)"
+			source="$dir/$target"
+		fi
+	done
+	local plugin_dir
+	plugin_dir="$(cd -P "$(dirname "$source")" && pwd)"
+	# Root is one level up (repo root containing install.sh, setup.sh, plugins/)
+	echo "$(dirname "$plugin_dir")"
 }
 
 # Parse arguments (support short + long + repeatable -m)
 NAME=""
-while (( $# )); do
-  case "$1" in
-    -t|--tmp) MODE="tmp"; shift ;;
-    -p|--permanent) MODE="permanent"; shift ;;
-    -s|--stop) MODE="stop"; shift ;;
-    -d|--delete) MODE="delete"; shift ;;
-    -i|--image)
-      shift; [ $# -ge 1 ] || die "Missing value for --image"
-      IMAGE="$1"; shift ;;
-    -m|--mount)
-      shift; [ $# -ge 1 ] || die "Missing value for --mount"
-      MOUNTS+=("$1"); shift ;;
-    --no-mlh) MOUNT_MLH=0; shift ;;
-    --shell)
-      shift; [ $# -ge 1 ] || die "Missing value for --shell"
-      SHELL_BIN="$1"; shift ;;
-    -h|--help) print_help; exit 0 ;;
-    --) shift; break ;;
-    -*)
-      die "Unknown option: $1 (use --help)"
-      ;;
-    *)
-      # First non-option is container name
-      if [ -z "${NAME:-}" ]; then
-        NAME="$1"; shift
-      else
-        die "Unexpected argument: $1"
-      fi
-      ;;
-  esac
+while (($#)); do
+	case "$1" in
+	-t | --tmp)
+		MODE="tmp"
+		shift
+		;;
+	-p | --permanent)
+		MODE="permanent"
+		shift
+		;;
+	-s | --stop)
+		MODE="stop"
+		shift
+		;;
+	-d | --delete)
+		MODE="delete"
+		shift
+		;;
+	-i | --image)
+		shift
+		[ $# -ge 1 ] || die "Missing value for --image"
+		IMAGE="$1"
+		shift
+		;;
+	-m | --mount)
+		shift
+		[ $# -ge 1 ] || die "Missing value for --mount"
+		MOUNTS+=("$1")
+		shift
+		;;
+	--no-mlh)
+		MOUNT_MLH=0
+		shift
+		;;
+	--shell)
+		shift
+		[ $# -ge 1 ] || die "Missing value for --shell"
+		SHELL_BIN="$1"
+		shift
+		;;
+	-h | --help)
+		print_help
+		exit 0
+		;;
+	--)
+		shift
+		break
+		;;
+	-*)
+		die "Unknown option: $1 (use --help)"
+		;;
+	*)
+		# First non-option is container name
+		if [ -z "${NAME:-}" ]; then
+			NAME="$1"
+			shift
+		else
+			die "Unexpected argument: $1"
+		fi
+		;;
+	esac
 done
 
-[ -n "${NAME:-}" ] || { print_help; exit 1; }
+[ -n "${NAME:-}" ] || {
+	print_help
+	exit 1
+}
 ensure_docker
 
 # Build docker -v args
 DOCKER_MOUNTS=()
 for m in "${MOUNTS[@]}"; do
-  DOCKER_MOUNTS+=("-v" "$m")
+	DOCKER_MOUNTS+=("-v" "$m")
 done
 
 # Optionally mount MyLinuxHelper repo to /opt/mlh (read-only)
 if [ "$MOUNT_MLH" -eq 1 ]; then
-  MLH_ROOT="$(resolve_mlh_root)"
-  if [ -f "$MLH_ROOT/install.sh" ]; then
-    DOCKER_MOUNTS+=("-v" "$MLH_ROOT:/opt/mlh:ro")
-  fi
+	MLH_ROOT="$(resolve_mlh_root)"
+	if [ -f "$MLH_ROOT/install.sh" ]; then
+		DOCKER_MOUNTS+=("-v" "$MLH_ROOT:/opt/mlh:ro")
+	fi
 fi
 
 # Shell entry: add MLH plugins to PATH and make 'i' function available
@@ -206,48 +248,48 @@ container_exists() { docker inspect "$1" >/dev/null 2>&1; }
 container_running() { docker inspect -f '{{.State.Running}}' "$1" 2>/dev/null | grep -qi true; }
 
 case "$MODE" in
-  tmp)
-    # Ephemeral: docker run --rm -it --name NAME ...
-    exec docker run --rm -it --name "$NAME" "${DOCKER_MOUNTS[@]}" "$IMAGE" "$SHELL_BIN" -c "$ENTRY_CMD"
-    ;;
+tmp)
+	# Ephemeral: docker run --rm -it --name NAME ...
+	exec docker run --rm -it --name "$NAME" "${DOCKER_MOUNTS[@]}" "$IMAGE" "$SHELL_BIN" -c "$ENTRY_CMD"
+	;;
 
-  permanent)
-    if ! container_exists "$NAME"; then
-      # Create with interactive TTY for future attaches
-      docker create -it --name "$NAME" "${DOCKER_MOUNTS[@]}" "$IMAGE" "$SHELL_BIN"
-    fi
-    # Start if not running
-    if ! container_running "$NAME"; then
-      docker start "$NAME" >/dev/null
-    fi
-    # Enter (exec) with MLH sourced
-    exec docker exec -it "$NAME" "$SHELL_BIN" -c "$ENTRY_CMD"
-    ;;
+permanent)
+	if ! container_exists "$NAME"; then
+		# Create with interactive TTY for future attaches
+		docker create -it --name "$NAME" "${DOCKER_MOUNTS[@]}" "$IMAGE" "$SHELL_BIN"
+	fi
+	# Start if not running
+	if ! container_running "$NAME"; then
+		docker start "$NAME" >/dev/null
+	fi
+	# Enter (exec) with MLH sourced
+	exec docker exec -it "$NAME" "$SHELL_BIN" -c "$ENTRY_CMD"
+	;;
 
-  stop)
-    container_exists "$NAME" || die "Container '$NAME' does not exist."
-    if container_running "$NAME"; then
-      docker stop "$NAME" >/dev/null
-      echo "Stopped: $NAME"
-    else
-      echo "Container '$NAME' is not running."
-    fi
-    ;;
+stop)
+	container_exists "$NAME" || die "Container '$NAME' does not exist."
+	if container_running "$NAME"; then
+		docker stop "$NAME" >/dev/null
+		echo "Stopped: $NAME"
+	else
+		echo "Container '$NAME' is not running."
+	fi
+	;;
 
-  delete)
-    # Stop if running, then remove
-    if container_exists "$NAME"; then
-      if container_running "$NAME"; then
-        docker stop "$NAME" >/dev/null || true
-      fi
-      docker rm "$NAME" >/dev/null
-      echo "Deleted: $NAME"
-    else
-      echo "Container '$NAME' does not exist."
-    fi
-    ;;
+delete)
+	# Stop if running, then remove
+	if container_exists "$NAME"; then
+		if container_running "$NAME"; then
+			docker stop "$NAME" >/dev/null || true
+		fi
+		docker rm "$NAME" >/dev/null
+		echo "Deleted: $NAME"
+	else
+		echo "Container '$NAME' does not exist."
+	fi
+	;;
 
-  *)
-    die "Unknown mode: $MODE"
-    ;;
+*)
+	die "Unknown mode: $MODE"
+	;;
 esac

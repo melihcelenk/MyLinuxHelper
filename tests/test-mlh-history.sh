@@ -13,7 +13,7 @@ HISTORY_SCRIPT="$ROOT_DIR/plugins/mlh-history.sh"
 # We need to extract functions from the script without running main()
 # Create a temporary version without the main call and without set -euo pipefail
 TEMP_SCRIPT=$(mktemp)
-sed -e '/^main "\$@"$/d' -e '/^set -euo pipefail$/d' "$HISTORY_SCRIPT" > "$TEMP_SCRIPT"
+sed -e '/^main "\$@"$/d' -e '/^set -euo pipefail$/d' "$HISTORY_SCRIPT" >"$TEMP_SCRIPT"
 
 # Source the modified script to access its functions
 # shellcheck source=/dev/null
@@ -192,7 +192,7 @@ else
 fi
 
 # Test 23: Main function handles -b flag
-if grep -q '\-b|--before)' "$HISTORY_SCRIPT"; then
+if grep -q '\-b.*--before)' "$HISTORY_SCRIPT"; then
   print_test_result "Main function handles -b/--before flag" "PASS"
 else
   print_test_result "Main function handles -b/--before flag" "FAIL" "Flag handler not found"
@@ -218,7 +218,7 @@ fi
 # Test 26: Time filtering with recent commands (simulate)
 current_ts=$(date +%s)
 test_history=$(mktemp)
-cat > "$test_history" << EOF
+cat >"$test_history" <<EOF
 #$((current_ts - 300))
 command 5 minutes ago
 #$((current_ts - 120))
@@ -238,8 +238,8 @@ fi
 
 # Test 27: Time filtering shows helpful message when no results
 test_history=$(mktemp)
-old_ts=$((current_ts - 86400))  # 1 day ago
-cat > "$test_history" << EOF
+old_ts=$((current_ts - 86400)) # 1 day ago
+cat >"$test_history" <<EOF
 #$old_ts
 old command
 EOF
@@ -254,7 +254,7 @@ fi
 
 # Test 28: Before offset calculation
 test_history=$(mktemp)
-cat > "$test_history" << EOF
+cat >"$test_history" <<EOF
 #$((current_ts - 7200))
 command 2 hours ago
 #$((current_ts - 3900))
@@ -278,7 +278,7 @@ fi
 # Test 29: Context view with -g flag (default 5 commands)
 current_ts=$(date +%s)
 test_history=$(mktemp)
-cat > "$test_history" << EOF
+cat >"$test_history" <<EOF
 #$((current_ts - 500))
 command 100
 #$((current_ts - 400))
@@ -302,14 +302,14 @@ fi
 # Test 30: Context view with custom size (7 commands)
 test_history=$(mktemp)
 for i in {1..10}; do
-  echo "#$((current_ts - (1000 - i * 100)))" >> "$test_history"
-  echo "command $i" >> "$test_history"
+  echo "#$((current_ts - (1000 - i * 100)))" >>"$test_history"
+  echo "command $i" >>"$test_history"
 done
 
 # Count lines that look like command output (number followed by text or ► symbol)
 result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 7 -g 5 2>&1 | grep -E "(►\s+[0-9]+|^\s+[0-9]+\s+20)" | wc -l)
 rm -f "$test_history"
-result=$(echo "$result" | tr -d ' ')  # Remove whitespace
+result=$(echo "$result" | tr -d ' ') # Remove whitespace
 if [ "$result" -eq 7 ]; then
   print_test_result "Context view respects custom size (7 -g 5)" "PASS"
 else
@@ -318,7 +318,7 @@ fi
 
 # Test 31: Target command is highlighted
 test_history=$(mktemp)
-cat > "$test_history" << EOF
+cat >"$test_history" <<EOF
 #$((current_ts - 300))
 before command
 #$((current_ts - 200))
@@ -339,11 +339,11 @@ fi
 current_ts=$(date +%s)
 test_history=$(mktemp)
 for i in {1..20}; do
-  echo "#$((current_ts - (2000 - i * 100)))" >> "$test_history"
+  echo "#$((current_ts - (2000 - i * 100)))" >>"$test_history"
   if [ $((i % 3)) -eq 0 ]; then
-    echo "git commit -m 'test $i'" >> "$test_history"
+    echo "git commit -m 'test $i'" >>"$test_history"
   else
-    echo "other command $i" >> "$test_history"
+    echo "other command $i" >>"$test_history"
   fi
 done
 
@@ -358,11 +358,11 @@ fi
 # Test 33: Find without limit shows all matches
 test_history=$(mktemp)
 for i in {1..10}; do
-  echo "#$((current_ts - (1000 - i * 100)))" >> "$test_history"
+  echo "#$((current_ts - (1000 - i * 100)))" >>"$test_history"
   if [ $((i % 2)) -eq 0 ]; then
-    echo "docker ps" >> "$test_history"
+    echo "docker ps" >>"$test_history"
   else
-    echo "other command" >> "$test_history"
+    echo "other command" >>"$test_history"
   fi
 done
 
@@ -378,8 +378,8 @@ fi
 # Test 34: Find shows summary with limit
 test_history=$(mktemp)
 for i in {1..15}; do
-  echo "#$((current_ts - (1500 - i * 100)))" >> "$test_history"
-  echo "test command $i" >> "$test_history"
+  echo "#$((current_ts - (1500 - i * 100)))" >>"$test_history"
+  echo "test command $i" >>"$test_history"
 done
 
 result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 5 -f "test command" 2>&1 | grep -c "Showing last 5 of 15")

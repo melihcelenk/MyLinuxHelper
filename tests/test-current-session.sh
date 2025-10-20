@@ -14,7 +14,7 @@ TEST_HISTFILE=$(mktemp)
 current_ts=$(date +%s)
 
 # Write some old commands
-cat > "$TEST_HISTFILE" << EOF
+cat >"$TEST_HISTFILE" <<EOF
 #$((current_ts - 7200))
 old command 1
 #$((current_ts - 3600))
@@ -30,7 +30,7 @@ export HISTFILE="$TEST_HISTFILE"
 
 # Simulate adding commands to current session (these would normally be in memory)
 # We'll append them to simulate what history -a does
-cat >> "$TEST_HISTFILE" << EOF
+cat >>"$TEST_HISTFILE" <<EOF
 #$current_ts
 new command from session
 EOF
@@ -50,9 +50,9 @@ echo ""
 
 # Check if the new command appears
 if echo "$result" | grep -q "new command from session"; then
-    echo "✓ PASS: mlh history shows current session command"
+	echo "✓ PASS: mlh history shows current session command"
 else
-    echo "✗ FAIL: mlh history does NOT show current session command"
+	echo "✗ FAIL: mlh history does NOT show current session command"
 fi
 
 # Cleanup

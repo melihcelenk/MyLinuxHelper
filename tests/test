@@ -24,124 +24,124 @@ FAILED_TESTS=0
 SKIPPED_TESTS=0
 
 print_header() {
-  echo ""
-  echo -e "${CYAN}========================================${NC}"
-  echo -e "${CYAN}$1${NC}"
-  echo -e "${CYAN}========================================${NC}"
-  echo ""
+	echo ""
+	echo -e "${CYAN}========================================${NC}"
+	echo -e "${CYAN}$1${NC}"
+	echo -e "${CYAN}========================================${NC}"
+	echo ""
 }
 
 print_test_result() {
-  local test_name="$1"
-  local result="$2"
-  local message="${3:-}"
+	local test_name="$1"
+	local result="$2"
+	local message="${3:-}"
 
-  TOTAL_TESTS=$((TOTAL_TESTS + 1))
+	TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-  if [ "$result" = "PASS" ]; then
-    PASSED_TESTS=$((PASSED_TESTS + 1))
-    echo -e "${GREEN}✓ PASS${NC}: $test_name"
-  elif [ "$result" = "SKIP" ]; then
-    SKIPPED_TESTS=$((SKIPPED_TESTS + 1))
-    echo -e "${YELLOW}⊘ SKIP${NC}: $test_name"
-    if [ -n "$message" ]; then
-      echo -e "  ${YELLOW}$message${NC}"
-    fi
-  else
-    FAILED_TESTS=$((FAILED_TESTS + 1))
-    echo -e "${RED}✗ FAIL${NC}: $test_name"
-    if [ -n "$message" ]; then
-      echo -e "  ${YELLOW}$message${NC}"
-    fi
-  fi
+	if [ "$result" = "PASS" ]; then
+		PASSED_TESTS=$((PASSED_TESTS + 1))
+		echo -e "${GREEN}✓ PASS${NC}: $test_name"
+	elif [ "$result" = "SKIP" ]; then
+		SKIPPED_TESTS=$((SKIPPED_TESTS + 1))
+		echo -e "${YELLOW}⊘ SKIP${NC}: $test_name"
+		if [ -n "$message" ]; then
+			echo -e "  ${YELLOW}$message${NC}"
+		fi
+	else
+		FAILED_TESTS=$((FAILED_TESTS + 1))
+		echo -e "${RED}✗ FAIL${NC}: $test_name"
+		if [ -n "$message" ]; then
+			echo -e "  ${YELLOW}$message${NC}"
+		fi
+	fi
 }
 
 print_summary() {
-  echo ""
-  echo -e "${CYAN}========================================${NC}"
-  echo -e "${CYAN}Test Summary${NC}"
-  echo -e "${CYAN}========================================${NC}"
-  echo -e "Total tests:  $TOTAL_TESTS"
-  echo -e "${GREEN}Passed:       $PASSED_TESTS${NC}"
-  if [ "$SKIPPED_TESTS" -gt 0 ]; then
-    echo -e "${YELLOW}Skipped:      $SKIPPED_TESTS${NC}"
-  fi
-  if [ "$FAILED_TESTS" -gt 0 ]; then
-    echo -e "${RED}Failed:       $FAILED_TESTS${NC}"
-  else
-    echo -e "Failed:       $FAILED_TESTS"
-  fi
-  echo ""
+	echo ""
+	echo -e "${CYAN}========================================${NC}"
+	echo -e "${CYAN}Test Summary${NC}"
+	echo -e "${CYAN}========================================${NC}"
+	echo -e "Total tests:  $TOTAL_TESTS"
+	echo -e "${GREEN}Passed:       $PASSED_TESTS${NC}"
+	if [ "$SKIPPED_TESTS" -gt 0 ]; then
+		echo -e "${YELLOW}Skipped:      $SKIPPED_TESTS${NC}"
+	fi
+	if [ "$FAILED_TESTS" -gt 0 ]; then
+		echo -e "${RED}Failed:       $FAILED_TESTS${NC}"
+	else
+		echo -e "Failed:       $FAILED_TESTS"
+	fi
+	echo ""
 
-  if [ "$FAILED_TESTS" -eq 0 ]; then
-    echo -e "${GREEN}All tests passed!${NC}"
-    return 0
-  else
-    echo -e "${RED}Some tests failed!${NC}"
-    return 1
-  fi
+	if [ "$FAILED_TESTS" -eq 0 ]; then
+		echo -e "${GREEN}All tests passed!${NC}"
+		return 0
+	else
+		echo -e "${RED}Some tests failed!${NC}"
+		return 1
+	fi
 }
 
 run_test_suite() {
-  local suite_name="$1"
-  local test_file="$SCRIPT_DIR/test-${suite_name}.sh"
+	local suite_name="$1"
+	local test_file="$SCRIPT_DIR/test-${suite_name}.sh"
 
-  if [ ! -f "$test_file" ]; then
-    echo -e "${RED}Error: Test suite '$suite_name' not found at: $test_file${NC}"
-    return 1
-  fi
+	if [ ! -f "$test_file" ]; then
+		echo -e "${RED}Error: Test suite '$suite_name' not found at: $test_file${NC}"
+		return 1
+	fi
 
-  print_header "Running test suite: $suite_name"
+	print_header "Running test suite: $suite_name"
 
-  # PRE-CHECK: Validate syntax before running
-  if ! bash -n "$test_file" 2>/dev/null; then
-    echo -e "${RED}✗ SYNTAX ERROR${NC}: Test suite has invalid bash syntax"
-    echo -e "${YELLOW}Likely cause: Windows line endings (CRLF)${NC}"
-    echo -e "${YELLOW}Fix with: sed -i 's/\\r\$//' $test_file${NC}"
-    FAILED_TESTS=$((FAILED_TESTS + 1))
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
-    return 0  # Don't exit, just mark as failed and continue
-  fi
+	# PRE-CHECK: Validate syntax before running
+	if ! bash -n "$test_file" 2>/dev/null; then
+		echo -e "${RED}✗ SYNTAX ERROR${NC}: Test suite has invalid bash syntax"
+		echo -e "${YELLOW}Likely cause: Windows line endings (CRLF)${NC}"
+		echo -e "${YELLOW}Fix with: sed -i 's/\\r\$//' $test_file${NC}"
+		FAILED_TESTS=$((FAILED_TESTS + 1))
+		TOTAL_TESTS=$((TOTAL_TESTS + 1))
+		return 0 # Don't exit, just mark as failed and continue
+	fi
 
-  # Source the test file which will call print_test_result for each test
-  # shellcheck source=/dev/null
-  source "$test_file"
+	# Source the test file which will call print_test_result for each test
+	# shellcheck source=/dev/null
+	source "$test_file"
 }
 
 run_all_tests() {
-  print_header "MyLinuxHelper - Test Suite"
+	print_header "MyLinuxHelper - Test Suite"
 
-  # Find all test-*.sh files in tests directory
-  local test_files
-  test_files=$(find "$SCRIPT_DIR" -maxdepth 1 -name "test-*.sh" -type f | sort)
+	# Find all test-*.sh files in tests directory
+	local test_files
+	test_files=$(find "$SCRIPT_DIR" -maxdepth 1 -name "test-*.sh" -type f | sort)
 
-  if [ -z "$test_files" ]; then
-    echo -e "${YELLOW}No test files found in $SCRIPT_DIR${NC}"
-    return 1
-  fi
+	if [ -z "$test_files" ]; then
+		echo -e "${YELLOW}No test files found in $SCRIPT_DIR${NC}"
+		return 1
+	fi
 
-  # Run each test suite
-  while IFS= read -r test_file; do
-    local suite_name
-    suite_name=$(basename "$test_file" .sh)
-    suite_name="${suite_name#test-}"
+	# Run each test suite
+	while IFS= read -r test_file; do
+		local suite_name
+		suite_name=$(basename "$test_file" .sh)
+		suite_name="${suite_name#test-}"
 
-    run_test_suite "$suite_name"
-  done <<< "$test_files"
+		run_test_suite "$suite_name"
+	done <<<"$test_files"
 }
 
 main() {
-  cd "$ROOT_DIR"
+	cd "$ROOT_DIR"
 
-  if [ $# -eq 0 ]; then
-    # Run all tests
-    run_all_tests
-  else
-    # Run specific test suite
-    run_test_suite "$1"
-  fi
+	if [ $# -eq 0 ]; then
+		# Run all tests
+		run_all_tests
+	else
+		# Run specific test suite
+		run_test_suite "$1"
+	fi
 
-  print_summary
+	print_summary
 }
 
 main "$@"

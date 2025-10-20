@@ -13,23 +13,23 @@ PLUGIN_SCRIPT="$ROOT_DIR/plugins/mlh-about.sh"
 
 # Test 1: Script exists
 if [ -f "$PLUGIN_SCRIPT" ]; then
-  print_test_result "mlh-about.sh exists" "PASS"
+	print_test_result "mlh-about.sh exists" "PASS"
 else
-  print_test_result "mlh-about.sh exists" "FAIL"
+	print_test_result "mlh-about.sh exists" "FAIL"
 fi
 
 # Test 2: Valid bash syntax
 if bash -n "$PLUGIN_SCRIPT" 2>/dev/null; then
-  print_test_result "mlh-about.sh has valid syntax" "PASS"
+	print_test_result "mlh-about.sh has valid syntax" "PASS"
 else
-  print_test_result "mlh-about.sh has valid syntax" "FAIL"
+	print_test_result "mlh-about.sh has valid syntax" "FAIL"
 fi
 
 # Test 3: Script is executable
 if [ -x "$PLUGIN_SCRIPT" ]; then
-  print_test_result "mlh-about.sh is executable" "PASS"
+	print_test_result "mlh-about.sh is executable" "PASS"
 else
-  print_test_result "mlh-about.sh is executable" "FAIL"
+	print_test_result "mlh-about.sh is executable" "FAIL"
 fi
 
 # ============================================================
@@ -38,37 +38,37 @@ fi
 
 # Test 4: Script has show_about function
 if grep -q "show_about" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script has show_about function" "PASS"
+	print_test_result "Script has show_about function" "PASS"
 else
-  print_test_result "Script has show_about function" "FAIL"
+	print_test_result "Script has show_about function" "FAIL"
 fi
 
 # Test 5: Script displays project name
 if grep -q "MyLinuxHelper" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script displays project name" "PASS"
+	print_test_result "Script displays project name" "PASS"
 else
-  print_test_result "Script displays project name" "FAIL"
+	print_test_result "Script displays project name" "FAIL"
 fi
 
 # Test 6: Script displays author information
 if grep -q "Author:" "$PLUGIN_SCRIPT" || grep -q "Melih" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script displays author information" "PASS"
+	print_test_result "Script displays author information" "PASS"
 else
-  print_test_result "Script displays author information" "FAIL"
+	print_test_result "Script displays author information" "FAIL"
 fi
 
 # Test 7: Script displays GitHub link
 if grep -q "github.com" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script displays GitHub link" "PASS"
+	print_test_result "Script displays GitHub link" "PASS"
 else
-  print_test_result "Script displays GitHub link" "FAIL"
+	print_test_result "Script displays GitHub link" "FAIL"
 fi
 
 # Test 8: Script displays version information
 if grep -q "Version" "$PLUGIN_SCRIPT" || grep -q "version" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script displays version information" "PASS"
+	print_test_result "Script displays version information" "PASS"
 else
-  print_test_result "Script displays version information" "FAIL"
+	print_test_result "Script displays version information" "FAIL"
 fi
 
 # ============================================================
@@ -77,28 +77,28 @@ fi
 
 # Test 9: Script has symlink resolution logic
 if grep -q "resolve_script_dir" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script has symlink resolution logic" "PASS"
+	print_test_result "Script has symlink resolution logic" "PASS"
 else
-  print_test_result "Script has symlink resolution logic" "FAIL"
+	print_test_result "Script has symlink resolution logic" "FAIL"
 fi
 
 # Test 10: Script supports --no-prompt flag
 if grep -q "no-prompt" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script supports --no-prompt flag" "PASS"
+	print_test_result "Script supports --no-prompt flag" "PASS"
 else
-  print_test_result "Script supports --no-prompt flag" "FAIL"
+	print_test_result "Script supports --no-prompt flag" "FAIL"
 fi
 
 # Test 11: Script lists features
 if grep -q "Features:" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script lists project features" "PASS"
+	print_test_result "Script lists project features" "PASS"
 else
-  print_test_result "Script lists project features" "FAIL"
+	print_test_result "Script lists project features" "FAIL"
 fi
 
 # Test 12: Script references mlh-version.sh for version info
 if grep -q "mlh-version.sh" "$PLUGIN_SCRIPT"; then
-  print_test_result "Script integrates with mlh-version.sh" "PASS"
+	print_test_result "Script integrates with mlh-version.sh" "PASS"
 else
-  print_test_result "Script integrates with mlh-version.sh" "FAIL"
+	print_test_result "Script integrates with mlh-version.sh" "FAIL"
 fi
