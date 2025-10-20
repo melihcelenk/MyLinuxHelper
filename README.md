@@ -125,14 +125,18 @@ mlh history -c
 ```
 
 **Key Features:**
+- **Current session support**: Automatically includes commands from current session via wrapper function
 - **Smart defaults**: Shows last 100 commands by default (configurable)
 - **Show all**: Use `-a` to display entire history
 - **Date tracking**: Shows when each command was executed (configurable)
 - **Search functionality**: Find commands by pattern with `mlh history -f <pattern>`
 - **Direct access**: Jump to specific command with `mlh history -g <number>`
 - **Date filtering**: Filter by date or date range with `mlh history -t <date>`
+- **Relative time support**: Use formats like `3d`, `20m`, `2h` for recent commands
+- **Before offset**: Specify time offset with `-b` flag (e.g., `-t 20m -b 1h`)
 - **Multiple display modes**: Simple (numbered with dates), Detailed (formatted), Minimal (plain)
 - **Configurable defaults**: Set default limit, display mode, and enable/disable date tracking
+- **Helpful messages**: When no results found, shows latest command timestamp with suggestions
 - **Non-intrusive**: Doesn't affect the system `history` command
 
 #### `i` - Smart Package Installer
@@ -229,16 +233,43 @@ search "*.conf" /etc
 /
 ├── setup.sh            # Main setup script
 ├── install.sh          # Universal package installer
-└── plugins/
-    ├── mlh.sh          # Interactive menu and command dispatcher
-    ├── mlh-docker.sh   # Docker shortcuts and container management
-    ├── mlh-history.sh  # Enhanced command history with dates, search, and filtering
-    ├── mlh-json.sh     # Advanced JSON search (delegates validation to isjsonvalid.sh)
-    ├── mlh-version.sh  # Version management and auto-update system
-    ├── mlh-about.sh    # Project information and about page
-    ├── linux.sh        # Launch and manage Docker containers
-    ├── search.sh       # Fast file search using find
-    ├── isjsonvalid.sh  # Centralized JSON validation with flexible output modes
-    └── ll.sh           # Shortcut for "ls -la"
+├── plugins/
+│   ├── mlh.sh          # Interactive menu and command dispatcher
+│   ├── mlh-docker.sh   # Docker shortcuts and container management
+│   ├── mlh-history.sh  # Enhanced command history with dates, search, and filtering
+│   ├── mlh-json.sh     # Advanced JSON search (delegates validation to isjsonvalid.sh)
+│   ├── mlh-version.sh  # Version management and auto-update system
+│   ├── mlh-about.sh    # Project information and about page
+│   ├── linux.sh        # Launch and manage Docker containers
+│   ├── search.sh       # Fast file search using find
+│   ├── isjsonvalid.sh  # Centralized JSON validation with flexible output modes
+│   └── ll.sh           # Shortcut for "ls -la"
+└── tests/
+    ├── test            # Main test runner
+    └── test-mlh-history.sh  # Test suite for mlh-history plugin
 ```
+
+## 🧪 Testing
+
+Run tests to verify functionality:
+
+```bash
+# Run all tests
+./tests/test
+
+# Run specific test suite
+./tests/test mlh-history
+```
+
+The test framework includes:
+- **28+ tests for mlh-history**: Relative time parsing, date filtering, before offset functionality, edge cases
+- **Comprehensive coverage**: Function tests, integration tests, error handling, helpful error messages
+- **Color-coded output**: Easy to read pass/fail results
+- **Modular design**: Easy to add new test suites for other plugins
+
+**Test Features:**
+- Relative time parsing validation (3d, 20m, 2h, etc.)
+- Time filtering with recent and old commands
+- Before offset calculation accuracy
+- Helpful debugging messages when no results found
 

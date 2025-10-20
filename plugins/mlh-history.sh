@@ -61,7 +61,8 @@ Options:
   -m, --minimal           Show minimal output (commands only)
   -f, --find <pattern>    Search for commands containing pattern
   -g, --goto <number>     Show specific command by line number
-  -t, --time <date>       Filter by date (YYYY-MM-DD or YYYY-MM-DD..YYYY-MM-DD)
+  -t, --time <time>       Filter by time (formats: YYYY-MM-DD, 3d, 20m, 2h)
+  -b, --before <time>     Start time offset (use with -t, formats: 1h, 30m, 2d)
   -c, --config            Configure default display mode, date tracking, and default limit
   -h, --help              Show this help
 
@@ -74,6 +75,10 @@ Examples:
   mlh history -g 1432     # Show command number 1432
   mlh history -t 2025-10-20                    # Show commands from specific date
   mlh history -t 2025-10-18..2025-10-20        # Show commands in date range
+  mlh history -t 3d       # Show commands from last 3 days
+  mlh history -t 20m      # Show commands from last 20 minutes
+  mlh history -t 2h       # Show commands from last 2 hours
+  mlh history -t 20m -b 1h   # Show 20 minutes of commands starting from 1 hour ago
   mlh history -c          # Configure settings (default limit, date tracking, display mode)
 
 Display Modes:
@@ -272,6 +277,10 @@ configure_defaults() {
 parse_history_with_timestamps() {
   local histfile="${HISTFILE:-$HOME/.bash_history}"
 
+  # Note: The mlh wrapper function in ~/.bashrc calls 'history -a' before
+  # invoking this script, so the history file should already contain
+  # the current session's commands
+
   if [ ! -f "$histfile" ]; then
     return 1
   fi
@@ -305,6 +314,35 @@ timestamp_to_date() {
   local ts="$1"
   if [ -n "$ts" ]; then
     date -d "@${ts}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date -r "${ts}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo ""
+  fi
+}
+
+# Parse relative time (e.g., 3d, 20m, 2h) and return seconds
+parse_relative_time() {
+  local time_str="$1"
+
+  if [[ "$time_str" =~ ^([0-9]+)([dhm])$ ]]; then
+    local value="${BASH_REMATCH[1]}"
+    local unit="${BASH_REMATCH[2]}"
+
+    case "$unit" in
+      d) # days
+        echo $((value * 86400))
+        ;;
+      h) # hours
+        echo $((value * 3600))
+        ;;
+      m) # minutes
+        echo $((value * 60))
+        ;;
+      *)
+        echo ""
+        return 1
+        ;;
+    esac
+  else
+    echo ""
+    return 1
   fi
 }
 
@@ -507,6 +545,7 @@ goto_command() {
 
 filter_by_date() {
   local date_filter="$1"
+  local before_offset="${2:-}"
   local has_dates=false
 
   check_histtimeformat && has_dates=true
@@ -517,32 +556,75 @@ filter_by_date() {
     return 1
   fi
 
-  # Parse date range
-  local start_date=""
-  local end_date=""
+  local start_ts=""
+  local end_ts=""
+  local current_ts
+  current_ts=$(date +%s)
 
-  if [[ "$date_filter" == *".."* ]]; then
-    # Date range: YYYY-MM-DD..YYYY-MM-DD
-    start_date="${date_filter%%..*}"
-    end_date="${date_filter##*..}"
+  # Check if it's a relative time format (e.g., 3d, 20m, 2h)
+  local relative_seconds
+  relative_seconds=$(parse_relative_time "$date_filter")
+
+  if [ -n "$relative_seconds" ]; then
+    # Relative time format
+    local before_seconds=0
+
+    # If before offset is provided, parse it
+    if [ -n "$before_offset" ]; then
+      before_seconds=$(parse_relative_time "$before_offset")
+      if [ -z "$before_seconds" ]; then
+        echo -e "${RED}Error: Invalid before offset format. Use formats like: 1h, 30m, 2d${NC}"
+        return 1
+      fi
+    fi
+
+    # Calculate time range
+    # End time is: current time - before_offset
+    end_ts=$((current_ts - before_seconds))
+    # Start time is: end_time - duration
+    start_ts=$((end_ts - relative_seconds))
+
+    # Format for display
+    local start_display=$(timestamp_to_date "$start_ts")
+    local end_display=$(timestamp_to_date "$end_ts")
+
+    if [ -n "$before_offset" ]; then
+      echo -e "${CYAN}Commands: ${YELLOW}${date_filter}${CYAN} starting from ${YELLOW}${before_offset}${CYAN} ago${NC}"
+    else
+      echo -e "${CYAN}Commands from last ${YELLOW}${date_filter}${NC}"
+    fi
+    echo -e "${CYAN}Time range: ${YELLOW}${start_display}${CYAN} to ${YELLOW}${end_display}${NC}"
+    echo ""
+
   else
-    # Single date
-    start_date="$date_filter"
-    end_date="$date_filter"
+    # Absolute date format (YYYY-MM-DD or range)
+    local start_date=""
+    local end_date=""
+
+    if [[ "$date_filter" == *".."* ]]; then
+      # Date range: YYYY-MM-DD..YYYY-MM-DD
+      start_date="${date_filter%%..*}"
+      end_date="${date_filter##*..}"
+    else
+      # Single date
+      start_date="$date_filter"
+      end_date="$date_filter"
+    fi
+
+    # Convert dates to timestamps
+    start_ts=$(date -d "$start_date 00:00:00" +%s 2>/dev/null)
+    end_ts=$(date -d "$end_date 23:59:59" +%s 2>/dev/null)
+
+    if [ -z "$start_ts" ] || [ -z "$end_ts" ]; then
+      echo -e "${RED}Error: Invalid date format. Use YYYY-MM-DD, YYYY-MM-DD..YYYY-MM-DD, or relative time (3d, 20m, 2h)${NC}"
+      return 1
+    fi
+
+    echo -e "${CYAN}Commands from ${YELLOW}${start_date}${CYAN} to ${YELLOW}${end_date}${NC}"
+    echo ""
   fi
 
-  # Convert dates to timestamps
-  local start_ts=$(date -d "$start_date 00:00:00" +%s 2>/dev/null)
-  local end_ts=$(date -d "$end_date 23:59:59" +%s 2>/dev/null)
-
-  if [ -z "$start_ts" ] || [ -z "$end_ts" ]; then
-    echo -e "${RED}Error: Invalid date format. Use YYYY-MM-DD or YYYY-MM-DD..YYYY-MM-DD${NC}"
-    return 1
-  fi
-
-  echo -e "${CYAN}Commands from ${YELLOW}${start_date}${CYAN} to ${YELLOW}${end_date}${NC}"
-  echo ""
-
+  # Parse and filter history
   local temp_file=$(mktemp)
   parse_history_with_timestamps > "$temp_file" || {
     echo -e "${RED}Error: Failed to parse history${NC}"
@@ -551,8 +633,22 @@ filter_by_date() {
   }
 
   local found=0
+  local total_with_ts=0
+  local newest_ts=0
+  local oldest_ts=9999999999
+
   while IFS='|' read -r num ts cmd; do
     if [ -n "$ts" ]; then
+      total_with_ts=$((total_with_ts + 1))
+
+      # Track newest and oldest timestamps
+      if [ "$ts" -gt "$newest_ts" ]; then
+        newest_ts="$ts"
+      fi
+      if [ "$ts" -lt "$oldest_ts" ]; then
+        oldest_ts="$ts"
+      fi
+
       if [ "$ts" -ge "$start_ts" ] && [ "$ts" -le "$end_ts" ]; then
         found=$((found + 1))
         local date=$(timestamp_to_date "$ts")
@@ -566,7 +662,30 @@ filter_by_date() {
   rm -f "$temp_file"
 
   if [ "$found" -eq 0 ]; then
-    echo -e "${YELLOW}No commands found in the specified date range${NC}"
+    echo -e "${YELLOW}No commands found in the specified time range${NC}"
+
+    # Provide helpful debugging information
+    if [ "$total_with_ts" -gt 0 ] && [ "$newest_ts" -gt 0 ]; then
+      local newest_date=$(timestamp_to_date "$newest_ts")
+      local time_diff=$((current_ts - newest_ts))
+      local time_diff_mins=$((time_diff / 60))
+      local time_diff_hours=$((time_diff / 3600))
+      local time_diff_days=$((time_diff / 86400))
+
+      echo ""
+      echo -e "${CYAN}Latest command in history:${NC} $newest_date"
+
+      if [ "$time_diff" -lt 3600 ]; then
+        echo -e "${CYAN}That was${NC} ${YELLOW}${time_diff_mins} minutes ago${NC}"
+      elif [ "$time_diff" -lt 86400 ]; then
+        echo -e "${CYAN}That was${NC} ${YELLOW}${time_diff_hours} hours ago${NC}"
+      else
+        echo -e "${CYAN}That was${NC} ${YELLOW}${time_diff_days} days ago${NC}"
+      fi
+
+      echo ""
+      echo -e "${CYAN}Tip:${NC} Try a larger time range (e.g., ${YELLOW}mlh history -t ${time_diff_hours}h${NC})"
+    fi
   else
     echo -e "${GREEN}Found ${found} command(s)${NC}"
   fi
@@ -580,6 +699,7 @@ main() {
   local find_pattern=""
   local goto_num=""
   local date_filter=""
+  local before_offset=""
   local show_all=false
 
   # Get default mode from config (default to "simple")
@@ -644,6 +764,15 @@ main() {
         date_filter="$1"
         shift
         ;;
+      -b|--before)
+        shift
+        if [ $# -eq 0 ]; then
+          echo -e "${RED}Error: --before requires a time offset${NC}"
+          exit 1
+        fi
+        before_offset="$1"
+        shift
+        ;;
       -*)
         echo "Error: Unknown option '$1'" >&2
         echo "Run 'mlh history --help' for usage information." >&2
@@ -675,8 +804,14 @@ main() {
   fi
 
   if [ -n "$date_filter" ]; then
-    filter_by_date "$date_filter"
+    filter_by_date "$date_filter" "$before_offset"
     exit 0
+  fi
+
+  # Check if before_offset was provided without date_filter
+  if [ -n "$before_offset" ]; then
+    echo -e "${RED}Error: --before requires --time to be specified${NC}"
+    exit 1
   fi
 
   # Use explicit mode if provided, otherwise use default

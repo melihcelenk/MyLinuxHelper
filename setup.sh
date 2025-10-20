@@ -16,6 +16,25 @@ ADD_LINE='export PATH="$HOME/.local/bin:$PATH"'
 grep -Fq "$ADD_LINE" "$BASHRC" 2>/dev/null || { echo "$ADD_LINE" >> "$BASHRC"; echo "Added ~/.local/bin to PATH in ~/.bashrc"; }
 grep -Fq "$ADD_LINE" "$PROFILE" 2>/dev/null || { echo "$ADD_LINE" >> "$PROFILE"; echo "Added ~/.local/bin to PATH in ~/.profile"; }
 
+# 1b) Add mlh wrapper function to ensure current session history is visible
+MLH_WRAPPER_MARKER="# MyLinuxHelper - mlh wrapper function"
+if ! grep -Fq "$MLH_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
+  cat >> "$BASHRC" << 'EOF'
+
+# MyLinuxHelper - mlh wrapper function
+# This wrapper ensures current session history is visible to mlh history command
+mlh() {
+  # If using mlh history, save current session history first
+  if [ "$1" = "history" ]; then
+    history -a 2>/dev/null || true
+  fi
+  # Call the actual mlh script
+  command mlh "$@"
+}
+EOF
+  echo "Added mlh wrapper function to ~/.bashrc"
+fi
+
 # 2) Make scripts executable
 echo "Granting execute permission to all plugin scripts..."
 find "$PLUGINS_DIR" -type f -name "*.sh" -exec chmod +x {} \;
