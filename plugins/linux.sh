@@ -54,11 +54,11 @@ Extra options:
   -h, --help                   Show this help.
 
 Examples:
-  linux deneme1
-  linux -t -i debian:12 deneme1
-  linux -p -m "$PWD:/workspace" deneme1
-  linux -s deneme1
-  linux -d deneme1
+  linux mycontainer
+  linux -t -i debian:12 mycontainer
+  linux -p -m "$PWD:/workspace" mycontainer
+  linux -s mycontainer
+  linux -d mycontainer
 EOF
 }
 
