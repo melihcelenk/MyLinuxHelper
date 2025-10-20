@@ -16,25 +16,25 @@ set -euo pipefail
 
 # Resolve script directory (handle symlinks)
 resolve_script_dir() {
-  local source="$0"
-  while [ -L "$source" ]; do
-    local target
-    target="$(readlink "$source")"
-    if [[ "$target" = /* ]]; then
-      source="$target"
-    else
-      local dir
-      dir="$(cd -P "$(dirname "$source")" && pwd)"
-      source="$dir/$target"
-    fi
-  done
-  cd -P "$(dirname "$source")" && pwd
+	local source="$0"
+	while [ -L "$source" ]; do
+		local target
+		target="$(readlink "$source")"
+		if [[ "$target" = /* ]]; then
+			source="$target"
+		else
+			local dir
+			dir="$(cd -P "$(dirname "$source")" && pwd)"
+			source="$dir/$target"
+		fi
+	done
+	cd -P "$(dirname "$source")" && pwd
 }
 
 SCRIPT_DIR="$(resolve_script_dir)"
 
 print_help() {
-  cat <<EOF
+	cat <<EOF
 mlh - MyLinuxHelper shortcut commands
 
 Usage:
@@ -48,6 +48,7 @@ Usage:
 Categories:
   docker    Docker shortcuts (see: mlh docker --help)
   json      JSON operations (see: mlh json --help)
+  history   Enhanced history formatting (see: mlh history --help)
 
 Examples:
   mlh                          # Show interactive menu
@@ -55,20 +56,21 @@ Examples:
   mlh about                    # Show project information and credits
   mlh update                   # Update to latest version
   mlh docker in mycontainer    # Enter a running container by name pattern
+  mlh history 10               # Show last 10 commands (numbered)
 EOF
 }
 
 print_version() {
-  exec "$SCRIPT_DIR/mlh-version.sh" "$@"
+	exec "$SCRIPT_DIR/mlh-version.sh" "$@"
 }
 
 show_about() {
-  "$SCRIPT_DIR/mlh-about.sh"
+	"$SCRIPT_DIR/mlh-about.sh"
 }
 
 show_app_settings_menu() {
-  while true; do
-    cat <<'EOF'
+	while true; do
+		cat <<'EOF'
 
 MyLinuxHelper - App Settings & Updates
 =======================================
@@ -80,36 +82,36 @@ MyLinuxHelper - App Settings & Updates
 
 EOF
 
-    read -rp "Select [1-4]: " SETTING_SELECTION
-    echo ""
+		read -rp "Select [1-4]: " SETTING_SELECTION
+		echo ""
 
-    case "$SETTING_SELECTION" in
-      1)
-        "$SCRIPT_DIR/mlh-version.sh"
-        echo ""
-        read -rp "Press Enter to continue..."
-        ;;
-      2)
-        exec "$SCRIPT_DIR/mlh-version.sh" update
-        ;;
-      3)
-        exec "$SCRIPT_DIR/mlh-version.sh" update -p
-        ;;
-      4|b|B)
-        return 0
-        ;;
-      *)
-        echo "Invalid selection: $SETTING_SELECTION"
-        echo ""
-        read -rp "Press Enter to continue..."
-        ;;
-    esac
-  done
+		case "$SETTING_SELECTION" in
+		1)
+			"$SCRIPT_DIR/mlh-version.sh"
+			echo ""
+			read -rp "Press Enter to continue..."
+			;;
+		2)
+			exec "$SCRIPT_DIR/mlh-version.sh" update
+			;;
+		3)
+			exec "$SCRIPT_DIR/mlh-version.sh" update -p
+			;;
+		4 | b | B)
+			return 0
+			;;
+		*)
+			echo "Invalid selection: $SETTING_SELECTION"
+			echo ""
+			read -rp "Press Enter to continue..."
+			;;
+		esac
+	done
 }
 
 show_interactive_menu() {
-  while true; do
-    cat <<'EOF'
+	while true; do
+		cat <<'EOF'
 
 MyLinuxHelper - Available Commands
 ===================================
@@ -120,96 +122,105 @@ MyLinuxHelper - Available Commands
 4. JSON operations           - Validate and search JSON files
 5. ll [path]                 - Enhanced directory listing (ls -la)
 6. mlh docker in <pattern>   - Enter running Docker container
-7. About MyLinuxHelper       - Project information and credits
-8. App Settings & Updates    - Version and update settings
+7. mlh history [count]       - Enhanced command history with dates
+8. About MyLinuxHelper       - Project information and credits
+9. App Settings & Updates    - Version and update settings
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-    read -rp "Select [1-8, q]: " SELECTION
+		read -rp "Select [1-9, q]: " SELECTION
 
-    echo ""
+		echo ""
 
-    case "$SELECTION" in
-      1)
-        "$SCRIPT_DIR/linux.sh" --help
-        exit 0
-        ;;
-      2)
-        "$SCRIPT_DIR/search.sh" --help
-        exit 0
-        ;;
-      3)
-        "$SCRIPT_DIR/../install.sh" --help
-        exit 0
-        ;;
-      4)
-        "$SCRIPT_DIR/mlh-json.sh" --help
-        exit 0
-        ;;
-      5)
-        "$SCRIPT_DIR/ll.sh" --help
-        exit 0
-        ;;
-      6)
-        "$SCRIPT_DIR/mlh-docker.sh" --help
-        exit 0
-        ;;
-      7)
-        show_about
-        ;;
-      8)
-        show_app_settings_menu
-        ;;
-      q|Q)
-        echo "Goodbye!"
-        exit 0
-        ;;
-      *)
-        echo "Invalid selection: $SELECTION"
-        echo ""
-        read -rp "Press Enter to continue..."
-        ;;
-    esac
-  done
+		case "$SELECTION" in
+		1)
+			"$SCRIPT_DIR/linux.sh" --help
+			exit 0
+			;;
+		2)
+			"$SCRIPT_DIR/search.sh" --help
+			exit 0
+			;;
+		3)
+			"$SCRIPT_DIR/../install.sh" --help
+			exit 0
+			;;
+		4)
+			"$SCRIPT_DIR/mlh-json.sh" --help
+			exit 0
+			;;
+		5)
+			"$SCRIPT_DIR/ll.sh" --help
+			exit 0
+			;;
+		6)
+			"$SCRIPT_DIR/mlh-docker.sh" --help
+			exit 0
+			;;
+		7)
+			"$SCRIPT_DIR/mlh-history.sh" --help
+			exit 0
+			;;
+		8)
+			show_about
+			;;
+		9)
+			show_app_settings_menu
+			;;
+		q | Q)
+			echo "Goodbye!"
+			exit 0
+			;;
+		*)
+			echo "Invalid selection: $SELECTION"
+			echo ""
+			read -rp "Press Enter to continue..."
+			;;
+		esac
+	done
 }
 
 # Parse arguments
 if [ $# -eq 0 ]; then
-  show_interactive_menu
-  exit 0
+	show_interactive_menu
+	exit 0
 fi
 
 CATEGORY="$1"
 shift
 
 case "$CATEGORY" in
-  -h|--help)
-    print_help
-    exit 0
-    ;;
-  -v|--version)
-    print_version "$@"
-    ;;
-  about)
-    # Delegate to about script
-    exec "$SCRIPT_DIR/mlh-about.sh" --no-prompt
-    ;;
-  update)
-    # Delegate to version script for updates
-    exec "$SCRIPT_DIR/mlh-version.sh" update "$@"
-    ;;
-  docker)
-    # Delegate to mlh-docker.sh
-    exec "$SCRIPT_DIR/mlh-docker.sh" "$@"
-    ;;
-  json)
-    # Delegate to mlh-json.sh
-    exec "$SCRIPT_DIR/mlh-json.sh" "$@"
-    ;;
-  *)
-    echo "Error: Unknown category '$CATEGORY'" >&2
-    echo "Run 'mlh --help' for available categories." >&2
-    exit 1
-    ;;
+-h | --help)
+	print_help
+	exit 0
+	;;
+-v | --version)
+	print_version "$@"
+	;;
+about)
+	# Delegate to about script
+	exec "$SCRIPT_DIR/mlh-about.sh" --no-prompt
+	;;
+update)
+	# Delegate to version script for updates
+	exec "$SCRIPT_DIR/mlh-version.sh" update "$@"
+	;;
+docker)
+	# Delegate to mlh-docker.sh
+	exec "$SCRIPT_DIR/mlh-docker.sh" "$@"
+	;;
+json)
+	# Delegate to mlh-json.sh
+	exec "$SCRIPT_DIR/mlh-json.sh" "$@"
+	;;
+history)
+	# Delegate to mlh-history.sh
+	exec "$SCRIPT_DIR/mlh-history.sh" "$@"
+	;;
+*)
+	echo "Error: Unknown category '$CATEGORY'" >&2
+	echo "Run 'mlh --help' for available categories." >&2
+	exit 1
+	;;
 esac

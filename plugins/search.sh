@@ -13,7 +13,7 @@
 set -euo pipefail
 
 show_help() {
-  cat <<'EOF'
+	cat <<'EOF'
 Usage: search <pattern> [path]
        search --help
 
@@ -39,8 +39,8 @@ EOF
 }
 
 if [ $# -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-  show_help
-  exit 0
+	show_help
+	exit 0
 fi
 
 PATTERN="$1"
@@ -48,8 +48,8 @@ SEARCH_PATH="${2:-.}"
 
 # Check if search path exists
 if [ ! -d "$SEARCH_PATH" ]; then
-  echo "Error: Directory '$SEARCH_PATH' does not exist" >&2
-  exit 1
+	echo "Error: Directory '$SEARCH_PATH' does not exist" >&2
+	exit 1
 fi
 
 # Perform search
@@ -59,16 +59,16 @@ echo ""
 # Use find with -iname for case-insensitive search
 # If pattern contains wildcards, use -name, otherwise use -iname
 if [[ "$PATTERN" == *"*"* ]] || [[ "$PATTERN" == *"?"* ]]; then
-  # Pattern has wildcards, use -name (case-sensitive)
-  RESULTS=$(find "$SEARCH_PATH" -type f -name "$PATTERN" 2>/dev/null || true)
+	# Pattern has wildcards, use -name (case-sensitive)
+	RESULTS=$(find "$SEARCH_PATH" -type f -name "$PATTERN" 2>/dev/null || true)
 else
-  # No wildcards, use -iname (case-insensitive) for better UX
-  RESULTS=$(find "$SEARCH_PATH" -type f -iname "*${PATTERN}*" 2>/dev/null || true)
+	# No wildcards, use -iname (case-insensitive) for better UX
+	RESULTS=$(find "$SEARCH_PATH" -type f -iname "*${PATTERN}*" 2>/dev/null || true)
 fi
 
 if [ -z "$RESULTS" ]; then
-  echo "No files found matching '$PATTERN'"
-  exit 1
+	echo "No files found matching '$PATTERN'"
+	exit 1
 fi
 
 # Count results
