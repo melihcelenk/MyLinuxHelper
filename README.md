@@ -245,13 +245,23 @@ search "*.conf" /etc
 │   ├── isjsonvalid.sh  # Centralized JSON validation with flexible output modes
 │   └── ll.sh           # Shortcut for "ls -la"
 └── tests/
-    ├── test            # Main test runner
-    └── test-mlh-history.sh  # Test suite for mlh-history plugin
+    ├── test                    # Main test runner (161 tests)
+    ├── test-mlh-history.sh     # 34 tests - Command history
+    ├── test-linux.sh           # 15 tests - Container management
+    ├── test-mlh-json.sh        # 18 tests - JSON operations
+    ├── test-mlh-docker.sh      # 18 tests - Docker shortcuts
+    ├── test-mlh.sh             # 20 tests - Main dispatcher
+    ├── test-search.sh          # 16 tests - File search
+    ├── test-isjsonvalid.sh     # 18 tests - JSON validation
+    ├── test-ll.sh              # 10 tests - Directory listing
+    └── test-mlh-about.sh       # 12 tests - About page
 ```
 
 ## 🧪 Testing
 
-Run tests to verify functionality:
+MyLinuxHelper includes a comprehensive test suite with **161 tests** covering all major functionality.
+
+### Running Tests
 
 ```bash
 # Run all tests
@@ -259,22 +269,146 @@ Run tests to verify functionality:
 
 # Run specific test suite
 ./tests/test mlh-history
+./tests/test mlh-docker
+./tests/test mlh-json
+./tests/test linux
+./tests/test search
+./tests/test isjsonvalid
+./tests/test ll
+./tests/test mlh-about
+./tests/test mlh
 ```
 
-The test framework includes:
-- **67+ tests total** across multiple plugins:
-  - **mlh-history (34 tests)**: Relative time, date filtering, before offset, context view, find with limit
-  - **linux (15 tests)**: Container management, flag validation, Docker commands
-  - **mlh-json (18 tests)**: JSON validation, search functionality, fuzzy matching
-- **Comprehensive coverage**: Function tests, integration tests, error handling, helpful error messages
-- **Color-coded output**: Easy to read pass/fail results
-- **Modular design**: Easy to add new test suites for other plugins
+### Test Coverage
+
+✅ **161 total tests** with **%100 success rate** (0 failing tests)
+
+**Completed Test Suites:**
+
+1. **mlh-history.sh** (34 tests) - Command history, time parsing, filtering
+2. **linux.sh** (15 tests) - Container management, Docker commands
+3. **mlh-json.sh** (18 tests) - JSON search, validation, fuzzy matching
+4. **mlh-docker.sh** (18 tests) - Container access, pattern matching
+5. **mlh.sh** (20 tests) - Main dispatcher, routing, interactive menu
+6. **search.sh** (16 tests) - File search, wildcards, error handling
+7. **isjsonvalid.sh** (18 tests) - JSON validation engine, output modes
+8. **ll.sh** (10 tests) - Directory listing wrapper
+9. **mlh-about.sh** (12 tests) - Project information display
+
+### Test Framework Features
+
+- **✅ SKIP Support**: Tests gracefully skip when dependencies (like `jq`) are missing
+- **✅ Syntax Error Detection**: Pre-validates test files before running to catch CRLF and syntax issues
+- **✅ Color-coded Output**: Green (PASS), Yellow (SKIP), Red (FAIL) for easy reading
+- **✅ Detailed Summary**: Shows Total, Passed, Skipped, Failed counts
+- **✅ Modular Design**: Easy to add new test suites for plugins
+
+### Code Quality
+
+The codebase follows shell scripting best practices:
+
+```bash
+# Format all scripts with shfmt
+shfmt -w .
+
+# Check for common issues
+shellcheck plugins/*.sh tests/*.sh
+```
+
+**ShellCheck Compliance:**
+
+- ✅ All SC2155 warnings fixed (separate declare and assign)
+- ✅ No unused variables
+- ✅ Proper error handling with `set -euo pipefail`
+- ✅ Clean syntax validation
 
 See `TEST_PLAN.md` for detailed testing strategy and `PROGRESS.md` for current status.
 
-**Test Features:**
-- Relative time parsing validation (3d, 20m, 2h, etc.)
-- Time filtering with recent and old commands
-- Before offset calculation accuracy
-- Helpful debugging messages when no results found
+## 🔧 Development
+
+### Code Formatting
+
+MyLinuxHelper uses [`shfmt`](https://github.com/mvdan/sh) for consistent shell script formatting:
+
+```bash
+# Install shfmt (if not already installed)
+# macOS
+brew install shfmt
+
+# Linux
+go install mvdan.cc/sh/v3/cmd/shfmt@latest
+
+# Format all scripts
+shfmt -w .
+
+# Check formatting without modifying
+shfmt -d .
+```
+
+**Formatting Standards:**
+
+- Indentation: Tabs
+- Binary operators: Spaces around operators
+- Redirect operators: No space before redirect
+- Case indent: Aligned with case keyword
+
+### Code Quality Checks
+
+```bash
+# Run ShellCheck on all scripts
+shellcheck plugins/*.sh tests/*.sh
+
+# Run tests after formatting
+./tests/test
+
+# Verify all tests pass
+echo $?  # Should be 0
+```
+
+### Adding New Tests
+
+1. Create a new test file in `tests/`:
+   ```bash
+   tests/test-<plugin-name>.sh
+   ```
+
+2. Follow the existing test structure:
+   ```bash
+   #!/usr/bin/env bash
+   # Disable strict mode for tests
+   set +euo pipefail 2>/dev/null || true
+   set +e
+
+   PLUGIN_SCRIPT="$ROOT_DIR/plugins/<plugin-name>.sh"
+
+   # Test 1: Script exists
+   if [ -f "$PLUGIN_SCRIPT" ]; then
+     print_test_result "<plugin-name>.sh exists" "PASS"
+   else
+     print_test_result "<plugin-name>.sh exists" "FAIL"
+   fi
+   ```
+
+3. Run the new test:
+   ```bash
+   ./tests/test <plugin-name>
+   ```
+
+### Fix Line Ending Issues
+
+If you see syntax errors due to Windows line endings (CRLF):
+
+```bash
+# Fix a single file
+sed -i 's/\r$//' tests/test-<name>.sh
+
+# Fix all test files
+find tests/ -name "*.sh" -exec sed -i 's/\r$//' {} \;
+
+# Verify fix
+file tests/test-<name>.sh
+# Should show: "ASCII text executable" (not "with CRLF")
+```
+
+The test runner automatically detects syntax errors and shows helpful fix commands.
 
