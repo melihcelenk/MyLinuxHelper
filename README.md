@@ -262,10 +262,15 @@ Run tests to verify functionality:
 ```
 
 The test framework includes:
-- **34+ tests for mlh-history**: Relative time parsing, date filtering, before offset, context view, find with limit, edge cases
+- **67+ tests total** across multiple plugins:
+  - **mlh-history (34 tests)**: Relative time, date filtering, before offset, context view, find with limit
+  - **linux (15 tests)**: Container management, flag validation, Docker commands
+  - **mlh-json (18 tests)**: JSON validation, search functionality, fuzzy matching
 - **Comprehensive coverage**: Function tests, integration tests, error handling, helpful error messages
 - **Color-coded output**: Easy to read pass/fail results
 - **Modular design**: Easy to add new test suites for other plugins
+
+See `TEST_PLAN.md` for detailed testing strategy and `PROGRESS.md` for current status.
 
 **Test Features:**
 - Relative time parsing validation (3d, 20m, 2h, etc.)
