@@ -281,7 +281,9 @@ MyLinuxHelper includes a comprehensive test suite with **161 tests** covering al
 
 ### Test Coverage
 
-✅ **161 total tests** with **%100 success rate** (0 failing tests)
+✅ **161 total tests** with **100% success rate** (0 failing tests)
+
+> **Note:** 8 tests in `mlh-json.sh` gracefully skip if `jq` is not installed. With `jq` installed, all 161 tests pass.
 
 **Completed Test Suites:**
 
