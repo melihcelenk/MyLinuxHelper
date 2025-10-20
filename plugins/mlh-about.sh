@@ -42,7 +42,7 @@ get_version_info() {
 
 		echo "${version}|${version_date}|${first_release_date}"
 	else
-		echo "1.3.0|17.10.2025|11.10.2025"
+		echo "1.4.1|20.10.2025|11.10.2025"
 	fi
 }
 
