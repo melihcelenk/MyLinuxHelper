@@ -275,4 +275,119 @@ else
   print_test_result "Before offset correctly filters time range" "FAIL" "Expected to find command from 65 min ago"
 fi
 
+# Test 29: Context view with -g flag (default 5 commands)
+current_ts=$(date +%s)
+test_history=$(mktemp)
+cat > "$test_history" << EOF
+#$((current_ts - 500))
+command 100
+#$((current_ts - 400))
+command 101
+#$((current_ts - 300))
+command 102
+#$((current_ts - 200))
+command 103
+#$((current_ts - 100))
+command 104
+EOF
+
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" -g 3 2>&1 | grep -c "command 10")
+rm -f "$test_history"
+if [ "$result" -ge 4 ]; then
+  print_test_result "Context view shows commands around target (-g)" "PASS"
+else
+  print_test_result "Context view shows commands around target (-g)" "FAIL" "Expected to see context commands"
+fi
+
+# Test 30: Context view with custom size (7 commands)
+test_history=$(mktemp)
+for i in {1..10}; do
+  echo "#$((current_ts - (1000 - i * 100)))" >> "$test_history"
+  echo "command $i" >> "$test_history"
+done
+
+# Count lines that look like command output (number followed by text or ► symbol)
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 7 -g 5 2>&1 | grep -E "(►\s+[0-9]+|^\s+[0-9]+\s+20)" | wc -l)
+rm -f "$test_history"
+result=$(echo "$result" | tr -d ' ')  # Remove whitespace
+if [ "$result" -eq 7 ]; then
+  print_test_result "Context view respects custom size (7 -g 5)" "PASS"
+else
+  print_test_result "Context view respects custom size (7 -g 5)" "FAIL" "Expected 7 commands, got $result"
+fi
+
+# Test 31: Target command is highlighted
+test_history=$(mktemp)
+cat > "$test_history" << EOF
+#$((current_ts - 300))
+before command
+#$((current_ts - 200))
+target command
+#$((current_ts - 100))
+after command
+EOF
+
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" -g 2 2>&1 | grep -c "►")
+rm -f "$test_history"
+if [ "$result" -eq 1 ]; then
+  print_test_result "Target command is highlighted with ► symbol" "PASS"
+else
+  print_test_result "Target command is highlighted with ► symbol" "FAIL" "Expected 1 highlighted line"
+fi
+
+# Test 32: Find with count limit
+current_ts=$(date +%s)
+test_history=$(mktemp)
+for i in {1..20}; do
+  echo "#$((current_ts - (2000 - i * 100)))" >> "$test_history"
+  if [ $((i % 3)) -eq 0 ]; then
+    echo "git commit -m 'test $i'" >> "$test_history"
+  else
+    echo "other command $i" >> "$test_history"
+  fi
+done
+
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 3 -f "git commit" 2>&1 | grep -c "git commit -m")
+rm -f "$test_history"
+if [ "$result" -eq 3 ]; then
+  print_test_result "Find with count limit (3 -f 'git commit')" "PASS"
+else
+  print_test_result "Find with count limit (3 -f 'git commit')" "FAIL" "Expected 3 results, got $result"
+fi
+
+# Test 33: Find without limit shows all matches
+test_history=$(mktemp)
+for i in {1..10}; do
+  echo "#$((current_ts - (1000 - i * 100)))" >> "$test_history"
+  if [ $((i % 2)) -eq 0 ]; then
+    echo "docker ps" >> "$test_history"
+  else
+    echo "other command" >> "$test_history"
+  fi
+done
+
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" -f "docker ps" 2>&1 | grep "^\s*docker ps" | wc -l)
+rm -f "$test_history"
+result=$(echo "$result" | tr -d ' ')
+if [ "$result" -eq 5 ]; then
+  print_test_result "Find without limit shows all matches" "PASS"
+else
+  print_test_result "Find without limit shows all matches" "FAIL" "Expected 5 results, got $result"
+fi
+
+# Test 34: Find shows summary with limit
+test_history=$(mktemp)
+for i in {1..15}; do
+  echo "#$((current_ts - (1500 - i * 100)))" >> "$test_history"
+  echo "test command $i" >> "$test_history"
+done
+
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 5 -f "test command" 2>&1 | grep -c "Showing last 5 of 15")
+rm -f "$test_history"
+if [ "$result" -eq 1 ]; then
+  print_test_result "Find shows 'Showing last X of Y' summary" "PASS"
+else
+  print_test_result "Find shows 'Showing last X of Y' summary" "FAIL" "Expected summary message"
+fi
+
 echo ""

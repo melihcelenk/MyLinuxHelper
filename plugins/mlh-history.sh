@@ -60,10 +60,10 @@ Options:
   -d, --detail            Show detailed history with formatted output
   -m, --minimal           Show minimal output (commands only)
   -f, --find <pattern>    Search for commands containing pattern
-  -g, --goto <number>     Show specific command by line number
+  -g, --goto <number>     Show commands around specific line number (with context)
   -t, --time <time>       Filter by time (formats: YYYY-MM-DD, 3d, 20m, 2h)
   -b, --before <time>     Start time offset (use with -t, formats: 1h, 30m, 2d)
-  -c, --config            Configure default display mode, date tracking, and default limit
+  -c, --config            Configure defaults (display mode, date tracking, limit, context)
   -h, --help              Show this help
 
 Examples:
@@ -72,14 +72,16 @@ Examples:
   mlh history -a          # Show all history
   mlh history -d          # Show detailed history with formatting
   mlh history -f docker   # Find all commands containing "docker"
-  mlh history -g 1432     # Show command number 1432
+  mlh history 10 -f git   # Find last 10 commands containing "git"
+  mlh history -g 1432     # Show 5 commands around #1432 (target highlighted in green)
+  mlh history 7 -g 1432   # Show 7 commands around #1432 (3 before, target, 3 after)
   mlh history -t 2025-10-20                    # Show commands from specific date
   mlh history -t 2025-10-18..2025-10-20        # Show commands in date range
   mlh history -t 3d       # Show commands from last 3 days
   mlh history -t 20m      # Show commands from last 20 minutes
   mlh history -t 2h       # Show commands from last 2 hours
   mlh history -t 20m -b 1h   # Show 20 minutes of commands starting from 1 hour ago
-  mlh history -c          # Configure settings (default limit, date tracking, display mode)
+  mlh history -c          # Configure settings (limit, context, date tracking, display mode)
 
 Display Modes:
   - Simple (default): Shows line numbers, dates (if available), and commands
@@ -267,6 +269,34 @@ configure_defaults() {
   else
     set_config_value "DEFAULT_LIMIT" "100"
     echo "✓ Default limit set to: 100 commands"
+  fi
+
+  echo ""
+
+  # Default context size configuration for -g flag
+  echo "Choose default context size for 'mlh history -g' (commands around target):"
+  echo ""
+  local current_context
+  current_context="$(get_config_value "DEFAULT_CONTEXT")"
+  if [ -n "$current_context" ]; then
+    echo "Current setting: $current_context commands"
+  else
+    echo "Current setting: 5 commands (default)"
+  fi
+  echo ""
+  read -rp "Enter context size (leave empty for 5): " CONTEXT_INPUT
+  echo ""
+
+  if [ -n "$CONTEXT_INPUT" ]; then
+    if [[ "$CONTEXT_INPUT" =~ ^[0-9]+$ ]]; then
+      set_config_value "DEFAULT_CONTEXT" "$CONTEXT_INPUT"
+      echo "✓ Default context size set to: $CONTEXT_INPUT commands"
+    else
+      echo "Invalid input. Must be a number."
+    fi
+  else
+    set_config_value "DEFAULT_CONTEXT" "5"
+    echo "✓ Default context size set to: 5 commands"
   fi
 
   echo ""
@@ -470,11 +500,16 @@ show_history_minimal() {
 
 find_in_history() {
   local pattern="$1"
+  local limit="${2:-}"
   local has_dates=false
 
   check_histtimeformat && has_dates=true
 
-  echo -e "${CYAN}Searching for: ${YELLOW}${pattern}${NC}"
+  if [ -n "$limit" ]; then
+    echo -e "${CYAN}Searching for last ${YELLOW}${limit}${CYAN} commands matching: ${YELLOW}${pattern}${NC}"
+  else
+    echo -e "${CYAN}Searching for: ${YELLOW}${pattern}${NC}"
+  fi
   echo ""
 
   local temp_file=$(mktemp)
@@ -484,35 +519,87 @@ find_in_history() {
     return 1
   }
 
-  local found=0
+  # First pass: collect matching commands
+  local matches_file=$(mktemp)
   while IFS='|' read -r num ts cmd; do
     if [[ "$cmd" == *"$pattern"* ]]; then
-      found=$((found + 1))
-      if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-        local date=$(timestamp_to_date "$ts")
-        echo -e "${GREEN}#${num}${NC} ${YELLOW}[${date}]${NC}"
-      else
-        echo -e "${GREEN}#${num}${NC}"
-      fi
-      echo -e "  ${cmd}"
-      echo ""
+      echo "${num}|${ts}|${cmd}" >> "$matches_file"
     fi
   done < "$temp_file"
 
   rm -f "$temp_file"
 
-  if [ "$found" -eq 0 ]; then
+  # Count total matches
+  local total_matches=0
+  if [ -f "$matches_file" ] && [ -s "$matches_file" ]; then
+    total_matches=$(wc -l < "$matches_file" | tr -d ' ')
+  fi
+
+  if [ "$total_matches" -eq 0 ]; then
     echo -e "${YELLOW}No commands found matching '${pattern}'${NC}"
+    rm -f "$matches_file"
+    return 0
+  fi
+
+  # Second pass: display last N matches
+  local display_file="$matches_file"
+  if [ -n "$limit" ]; then
+    display_file=$(mktemp)
+    tail -n "$limit" "$matches_file" > "$display_file"
+  fi
+
+  local shown=0
+  while IFS='|' read -r num ts cmd; do
+    shown=$((shown + 1))
+    if [ -n "$ts" ] && [ "$has_dates" = true ]; then
+      local date=$(timestamp_to_date "$ts")
+      echo -e "${GREEN}#${num}${NC} ${YELLOW}[${date}]${NC}"
+    else
+      echo -e "${GREEN}#${num}${NC}"
+    fi
+    echo -e "  ${cmd}"
+    echo ""
+  done < "$display_file"
+
+  # Cleanup
+  rm -f "$matches_file"
+  if [ "$display_file" != "$matches_file" ]; then
+    rm -f "$display_file"
+  fi
+
+  # Show summary
+  if [ -n "$limit" ] && [ "$total_matches" -gt "$shown" ]; then
+    echo -e "${GREEN}Showing last ${shown} of ${total_matches} matching command(s)${NC}"
   else
-    echo -e "${GREEN}Found ${found} matching command(s)${NC}"
+    echo -e "${GREEN}Found ${shown} matching command(s)${NC}"
   fi
 }
 
 goto_command() {
   local target_num="$1"
+  local context="${2:-}"
   local has_dates=false
 
   check_histtimeformat && has_dates=true
+
+  # Get default context size from config if not provided
+  if [ -z "$context" ]; then
+    context="$(get_config_value "DEFAULT_CONTEXT" || echo "")"
+    if [ -z "$context" ] || [ "$context" = "" ]; then
+      context="5"
+    fi
+  fi
+
+  # Calculate range: show (context-1)/2 commands before and after target
+  local half_context=$(( (context - 1) / 2 ))
+  local start_num=$(( target_num - half_context ))
+  local end_num=$(( target_num + half_context ))
+
+  # Ensure start_num is at least 1
+  if [ "$start_num" -lt 1 ]; then
+    start_num=1
+    end_num=$(( start_num + context - 1 ))
+  fi
 
   local temp_file=$(mktemp)
   parse_history_with_timestamps > "$temp_file" || {
@@ -521,17 +608,32 @@ goto_command() {
     return 1
   }
 
+  echo -e "${CYAN}Showing ${context} commands around #${target_num}${NC}"
+  echo ""
+
   local found=false
+  local shown=0
   while IFS='|' read -r num ts cmd; do
-    if [ "$num" = "$target_num" ]; then
-      found=true
-      echo -e "${GREEN}Command #${num}${NC}"
-      if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-        local date=$(timestamp_to_date "$ts")
-        echo -e "${YELLOW}Date:${NC} $date"
+    if [ "$num" -ge "$start_num" ] && [ "$num" -le "$end_num" ] && [ "$shown" -lt "$context" ]; then
+      shown=$((shown + 1))
+
+      # Highlight the target command in green
+      if [ "$num" = "$target_num" ]; then
+        found=true
+        if [ -n "$ts" ] && [ "$has_dates" = true ]; then
+          local date=$(timestamp_to_date "$ts")
+          echo -e "${GREEN}► ${num}${NC}  ${YELLOW}${date}${NC}  ${GREEN}${cmd}${NC}"
+        else
+          echo -e "${GREEN}► ${num}${NC}  ${GREEN}${cmd}${NC}"
+        fi
+      else
+        if [ -n "$ts" ] && [ "$has_dates" = true ]; then
+          local date=$(timestamp_to_date "$ts")
+          printf "  %-6s  %-19s  %s\n" "$num" "$date" "$cmd"
+        else
+          printf "  %-6s  %s\n" "$num" "$cmd"
+        fi
       fi
-      echo -e "${BLUE}Command:${NC} $cmd"
-      break
     fi
   done < "$temp_file"
 
@@ -794,12 +896,14 @@ main() {
 
   # Handle special operations
   if [ -n "$find_pattern" ]; then
-    find_in_history "$find_pattern"
+    # If count is provided with -f, use it as limit
+    find_in_history "$find_pattern" "$count"
     exit 0
   fi
 
   if [ -n "$goto_num" ]; then
-    goto_command "$goto_num"
+    # If count is provided with -g, use it as context size
+    goto_command "$goto_num" "$count"
     exit 0
   fi
 

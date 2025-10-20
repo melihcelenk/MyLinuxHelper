@@ -262,7 +262,7 @@ Run tests to verify functionality:
 ```
 
 The test framework includes:
-- **28+ tests for mlh-history**: Relative time parsing, date filtering, before offset functionality, edge cases
+- **34+ tests for mlh-history**: Relative time parsing, date filtering, before offset, context view, find with limit, edge cases
 - **Comprehensive coverage**: Function tests, integration tests, error handling, helpful error messages
 - **Color-coded output**: Easy to read pass/fail results
 - **Modular design**: Easy to add new test suites for other plugins
