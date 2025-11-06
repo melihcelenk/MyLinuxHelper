@@ -17,11 +17,20 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Test statistics
-TOTAL_TESTS=0
-PASSED_TESTS=0
-FAILED_TESTS=0
-SKIPPED_TESTS=0
+# Test statistics (use temp file for cross-subshell communication)
+STATS_FILE=$(mktemp)
+echo "0 0 0 0" >"$STATS_FILE" # total passed failed skipped
+
+# Cleanup stats file on exit
+trap "rm -f '$STATS_FILE'" EXIT
+
+load_stats() {
+	read -r TOTAL_TESTS PASSED_TESTS FAILED_TESTS SKIPPED_TESTS <"$STATS_FILE"
+}
+
+save_stats() {
+	echo "$TOTAL_TESTS $PASSED_TESTS $FAILED_TESTS $SKIPPED_TESTS" >"$STATS_FILE"
+}
 
 print_header() {
 	echo ""
@@ -35,6 +44,9 @@ print_test_result() {
 	local test_name="$1"
 	local result="$2"
 	local message="${3:-}"
+
+	# Load current stats from file
+	load_stats
 
 	TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
@@ -60,9 +72,15 @@ print_test_result() {
 			echo -e "  ${YELLOW}$message${NC}"
 		fi
 	fi
+
+	# Save updated stats to file
+	save_stats
 }
 
 print_summary() {
+	# Load final stats from file
+	load_stats
+
 	echo ""
 	echo -e "${CYAN}========================================${NC}"
 	echo -e "${CYAN}Test Summary${NC}"
@@ -109,9 +127,17 @@ run_test_suite() {
 		return 0 # Don't exit, just mark as failed and continue
 	fi
 
-	# Source the test file which will call print_test_result for each test
-	# shellcheck source=/dev/null
-	source "$test_file"
+	# Run test file in a subshell to isolate exit/trap statements
+	# We use ( ) subshell syntax to prevent 'exit' from killing the test runner
+	# Export necessary variables and functions for subshell
+	export -f print_test_result load_stats save_stats print_header
+	export STATS_FILE ROOT_DIR GREEN RED YELLOW CYAN NC
+
+	(
+		# Source the test file which will call print_test_result for each test
+		# shellcheck source=/dev/null
+		source "$test_file"
+	)
 }
 
 run_all_tests() {
