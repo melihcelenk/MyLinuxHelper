@@ -46,6 +46,7 @@ Usage:
   mlh update                   Update to latest version
 
 Categories:
+  bookmark  Quick directory bookmarks (see: mlh bookmark --help)
   docker    Docker shortcuts (see: mlh docker --help)
   json      JSON operations (see: mlh json --help)
   history   Enhanced history formatting (see: mlh history --help)
@@ -55,6 +56,8 @@ Examples:
   mlh --version                # Show current version
   mlh about                    # Show project information and credits
   mlh update                   # Update to latest version
+  mlh bookmark .               # Save current directory as bookmark
+  mlh bookmark list            # List all bookmarks
   mlh docker in mycontainer    # Enter a running container by name pattern
   mlh history 10               # Show last 10 commands (numbered)
 EOF
@@ -116,56 +119,61 @@ show_interactive_menu() {
 MyLinuxHelper - Available Commands
 ===================================
 
-1. linux <name>              - Create and manage Linux containers
-2. search <pattern>          - Fast file search in directories
-3. i <package>               - Install packages (auto-detects package manager)
-4. JSON operations           - Validate and search JSON files
-5. ll [path]                 - Enhanced directory listing (ls -la)
-6. mlh docker in <pattern>   - Enter running Docker container
-7. mlh history [count]       - Enhanced command history with dates
-8. About MyLinuxHelper       - Project information and credits
-9. App Settings & Updates    - Version and update settings
+1. bookmark <name>           - Quick directory bookmarks
+2. linux <name>              - Create and manage Linux containers
+3. search <pattern>          - Fast file search in directories
+4. i <package>               - Install packages (auto-detects package manager)
+5. JSON operations           - Validate and search JSON files
+6. ll [path]                 - Enhanced directory listing (ls -la)
+7. mlh docker in <pattern>   - Enter running Docker container
+8. mlh history [count]       - Enhanced command history with dates
+9. About MyLinuxHelper       - Project information and credits
+0. App Settings & Updates    - Version and update settings
 
 Enter command number to see usage, or 'q' to quit.
 EOF
 
-		read -rp "Select [1-9, q]: " SELECTION
+		read -rp "Select [0-9, q]: " SELECTION
 
 		echo ""
 
 		case "$SELECTION" in
 		1)
-			"$SCRIPT_DIR/linux.sh" --help
+			"$SCRIPT_DIR/mlh-bookmark.sh" --help
 			exit 0
 			;;
 		2)
-			"$SCRIPT_DIR/search.sh" --help
+			"$SCRIPT_DIR/linux.sh" --help
 			exit 0
 			;;
 		3)
-			"$SCRIPT_DIR/../install.sh" --help
+			"$SCRIPT_DIR/search.sh" --help
 			exit 0
 			;;
 		4)
-			"$SCRIPT_DIR/mlh-json.sh" --help
+			"$SCRIPT_DIR/../install.sh" --help
 			exit 0
 			;;
 		5)
-			"$SCRIPT_DIR/ll.sh" --help
+			"$SCRIPT_DIR/mlh-json.sh" --help
 			exit 0
 			;;
 		6)
-			"$SCRIPT_DIR/mlh-docker.sh" --help
+			"$SCRIPT_DIR/ll.sh" --help
 			exit 0
 			;;
 		7)
-			"$SCRIPT_DIR/mlh-history.sh" --help
+			"$SCRIPT_DIR/mlh-docker.sh" --help
 			exit 0
 			;;
 		8)
-			show_about
+			"$SCRIPT_DIR/mlh-history.sh" --help
+			exit 0
 			;;
 		9)
+			show_about
+			;;
+		0)
 			show_app_settings_menu
 			;;
 		q | Q)
@@ -217,6 +225,10 @@ json)
 history)
 	# Delegate to mlh-history.sh
 	exec "$SCRIPT_DIR/mlh-history.sh" "$@"
+	;;
+bookmark)
+	# Delegate to mlh-bookmark.sh
+	exec "$SCRIPT_DIR/mlh-bookmark.sh" "$@"
 	;;
 *)
 	echo "Error: Unknown category '$CATEGORY'" >&2

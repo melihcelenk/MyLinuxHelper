@@ -107,15 +107,122 @@ Key feature: Automatically mounts the MyLinuxHelper repository at `/opt/mlh` ins
 
 Configuration is stored in `~/.mylinuxhelper/.update-config`.
 
+### Quick Directory Bookmarks
+
+`mlh-bookmark.sh` provides a fast navigation system:
+
+**Features:**
+
+- **Numbered stack**: Quick save/restore (max 10 bookmarks)
+- **Named bookmarks**: Persistent bookmarks with names
+- **Category support**: Organize bookmarks hierarchically (Phase 2)
+- **JSON storage**: `~/.mylinuxhelper/bookmarks.json`
+
+**Architecture:**
+
+- Stack-based unnamed bookmarks (LIFO)
+- Named bookmarks with access tracking
+- Command name conflict detection
+- Path validation with warnings
+- jq-based JSON manipulation
+
+**Usage patterns:**
+
+```bash
+bookmark .              # Save current dir (becomes #1)
+bookmark 1              # Jump to bookmark #1
+bookmark . -n myproject # Save with name
+bookmark myproject      # Jump to named bookmark
+bookmark list           # Show all bookmarks
+```
+
+**Storage format:**
+
+```json
+{
+   "bookmarks": {
+      "named": [
+         {
+            name,
+            path,
+            category,
+            created,
+            accessed,
+            access_count
+         }
+      ],
+      "unnamed": [
+         {
+            id,
+            path,
+            created
+         }
+      ]
+   },
+   "config": {
+      max_unnamed: 10,
+      auto_cleanup: true
+   }
+}
+```
+
 ## Testing & Development
+
+### Test Execution (Project-Specific)
+
+**Docker command for this project:**
+
+```bash
+docker run --rm -v "//c/Kodlar/Python-Bash-Bat/MyLinuxHelper://mlh" ubuntu:22.04 bash -c \
+  "cd /mlh && apt-get update -qq && apt-get install -y -qq jq >/dev/null 2>&1 && \
+   bash tests/test <test-name>"
+```
+
+**Local testing:**
+
+```bash
+bash tests/test <test-name>
+```
+
+### Automated Testing
+
+The test suite uses a standardized framework:
+
+```bash
+# Run all tests
+bash tests/test
+
+# Run specific test suite
+bash tests/test mlh-bookmark
+
+# Test output format
+✓ PASS: Test description
+✗ FAIL: Test description
+  Error details
+⊘ SKIP: Test description
+  Reason for skip
+```
+
+**Test File Structure:**
+
+```bash
+tests/
+├── test                      # Main test runner
+├── test-mlh-bookmark.sh     # Bookmark feature tests (33 tests)
+├── test-mlh-history.sh      # History feature tests
+├── test-mlh-json.sh         # JSON validation tests
+└── ...
+```
 
 ### Manual Testing
 
 After making changes to any plugin script:
 
 1. Run `./setup.sh` to refresh symlinks and permissions
-2. Test the command directly (e.g., `mlh docker in test`)
-3. Test both standalone mode and via `mlh` dispatcher
+2. **Run automated tests**: `bash tests/test <component>`
+3. **Verify all tests pass** before proceeding
+4. Test the command directly (e.g., `mlh docker in test`)
+5. Test both standalone mode and via `mlh` dispatcher
 
 ### Common Development Patterns
 
@@ -190,14 +297,22 @@ When releasing a new version:
 ├── get-mlh.sh          # Bootstrap installer (downloads repo)
 ├── setup.sh            # Creates symlinks and configures PATH
 ├── install.sh          # Universal package installer (provides 'i' command)
-└── plugins/
-    ├── mlh.sh          # Main command dispatcher with interactive menu
-    ├── mlh-docker.sh   # Docker container shortcuts
-    ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
-    ├── mlh-version.sh  # Version management and auto-update system
-    ├── mlh-about.sh    # Project information
-    ├── linux.sh        # Docker container lifecycle management
-    ├── search.sh       # File search using find
-    ├── isjsonvalid.sh  # Centralized JSON validation engine
-    └── ll.sh           # ls -la shortcut
+├── .gitignore          # Ignore IDE files, OS files, runtime data
+├── plugins/
+│   ├── mlh.sh          # Main command dispatcher with interactive menu
+│   ├── mlh-bookmark.sh # Quick directory bookmarks (JSON-based storage)
+│   ├── mlh-docker.sh   # Docker container shortcuts
+│   ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
+│   ├── mlh-version.sh  # Version management and auto-update system
+│   ├── mlh-about.sh    # Project information
+│   ├── linux.sh        # Docker container lifecycle management
+│   ├── search.sh       # File search using find
+│   ├── isjsonvalid.sh  # Centralized JSON validation engine
+│   └── ll.sh           # ls -la shortcut
+└── tests/
+    ├── test                      # Main test runner framework
+    ├── test-mlh-bookmark.sh     # Bookmark tests (33 tests, requires jq)
+    ├── test-mlh-history.sh      # History tests
+    ├── test-mlh-json.sh         # JSON validation tests
+    └── ...
 ```

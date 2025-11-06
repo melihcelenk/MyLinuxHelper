@@ -48,6 +48,7 @@ chmod +x "$ROOT_DIR/install.sh"
 
 # 3) Create/refresh symlinks in ~/.local/bin
 declare -A LINKS=(
+	["$LOCAL_BIN/bookmark"]="$PLUGINS_DIR/mlh-bookmark.sh"
 	["$LOCAL_BIN/i"]="$ROOT_DIR/install.sh"
 	["$LOCAL_BIN/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
 	["$LOCAL_BIN/ll"]="$PLUGINS_DIR/ll.sh"
@@ -67,6 +68,7 @@ done
 if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; then
 	echo "Linking into /usr/local/bin (requested via MLH_INSTALL_USR_LOCAL=1)..."
 	declare -A ULINKS=(
+		["/usr/local/bin/bookmark"]="$PLUGINS_DIR/mlh-bookmark.sh"
 		["/usr/local/bin/i"]="$ROOT_DIR/install.sh"
 		["/usr/local/bin/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
 		["/usr/local/bin/ll"]="$PLUGINS_DIR/ll.sh"
