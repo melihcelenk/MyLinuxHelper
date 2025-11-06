@@ -760,39 +760,69 @@ interactive_list() {
 		# Read key with proper handling
 		# Interactive mode - wait for user input (no timeout)
 		# In WSL, prefer stdin if it's a TTY, otherwise try /dev/tty
+		key=""
 		if [ -t 0 ]; then
 			# Direct TTY - use normal read
-			read -rsn1 key 2>/dev/null || break
+			if ! read -rsn1 key 2>/dev/null; then
+				continue
+			fi
 		elif [ -e /dev/tty ]; then
 			# Not a TTY but /dev/tty exists - read from /dev/tty
-			read -rsn1 key < /dev/tty 2>/dev/null || break
+			if ! read -rsn1 key < /dev/tty 2>/dev/null; then
+				continue
+			fi
 		else
 			# WSL fallback - try reading from stdin anyway
-			read -rsn1 key 2>/dev/null || break
+			if ! read -rsn1 key 2>/dev/null; then
+				continue
+			fi
 		fi
 		
 		# Handle arrow keys (escape sequences)
 		if [[ $key == $'\x1b' ]]; then
+			rest=""
 			if [ -t 0 ]; then
-				read -rsn2 -t 0.1 rest 2>/dev/null || rest=""
+				read -rsn1 -t 0.5 rest 2>/dev/null || rest=""
 			elif [ -e /dev/tty ]; then
-				read -rsn2 -t 0.1 rest < /dev/tty 2>/dev/null || rest=""
+				read -rsn1 -t 0.5 rest < /dev/tty 2>/dev/null || rest=""
 			else
-				read -rsn2 -t 0.1 rest 2>/dev/null || rest=""
+				read -rsn1 -t 0.5 rest 2>/dev/null || rest=""
 			fi
-			if [ -n "$rest" ]; then
-				key="$key$rest"
+			if [[ $rest == '[' ]]; then
+				# Read the actual arrow key character
+				if [ -t 0 ]; then
+					read -rsn1 -t 0.5 rest2 2>/dev/null || rest2=""
+				elif [ -e /dev/tty ]; then
+					read -rsn1 -t 0.5 rest2 < /dev/tty 2>/dev/null || rest2=""
+				else
+					read -rsn1 -t 0.5 rest2 2>/dev/null || rest2=""
+				fi
+				if [[ $rest2 == 'A' ]]; then
+					key="UP"
+				elif [[ $rest2 == 'B' ]]; then
+					key="DOWN"
+				elif [[ $rest2 == 'C' ]]; then
+					key="RIGHT"
+				elif [[ $rest2 == 'D' ]]; then
+					key="LEFT"
+				else
+					# Unknown escape sequence - treat as quit
+					key="q"
+				fi
+			else
+				# ESC key alone - treat as quit
+				key="q"
 			fi
 		fi
 		
 		case "$key" in
-			$'\x1b[A'|'k') # Up arrow or k
-				((selected--))
-				[ $selected -lt 0 ] && selected=$((total - 1))
+			'UP'|'k'|'K') # Up arrow or k
+				((selected--)) || true
+				[ $selected -lt 0 ] && selected=$((total - 1)) || true
 				;;
-			$'\x1b[B'|'j') # Down arrow or j
-				((selected++))
-				[ $selected -ge $total ] && selected=0
+			'DOWN'|'j'|'J') # Down arrow or j
+				((selected++)) || true
+				[ $selected -ge $total ] && selected=0 || true
 				;;
 			'') # Enter
 				local sel_type="${entry_types[$selected]}"
