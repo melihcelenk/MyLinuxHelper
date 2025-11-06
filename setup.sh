@@ -37,18 +37,25 @@ mlh() {
   # Call the actual mlh script
   command mlh "$@"
 }
+EOF
+	echo "Added mlh wrapper function to ~/.bashrc"
+fi
+
+# 1c) Add bookmark wrapper function for cd functionality
+BOOKMARK_WRAPPER_MARKER="# MyLinuxHelper - bookmark wrapper function"
+if ! grep -Fq "$BOOKMARK_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
+	cat >>"$BASHRC" <<'EOF'
 
 # MyLinuxHelper - bookmark wrapper function
 # This wrapper enables 'cd' functionality by evaluating the output
 bookmark() {
   local cmd="$1"
-  shift
   
   # For jumping to bookmarks (number or name), eval the output to enable cd
-  if [[ "$cmd" =~ ^[0-9]+$ ]] || [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ]; then
+  if [[ "$cmd" =~ ^[0-9]+$ ]] || ( [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ] ); then
     # This might be a bookmark name/number - check if it produces a cd command
     local output
-    output=$(command bookmark "$cmd" "$@" 2>&1)
+    output=$(command bookmark "$@" 2>&1)
     if echo "$output" | grep -q "^cd "; then
       # Extract and execute the cd command
       eval "$(echo "$output" | grep "^cd ")"
@@ -61,11 +68,11 @@ bookmark() {
     fi
   else
     # For other commands (save, list, mv, help), just pass through
-    command bookmark "$cmd" "$@"
+    command bookmark "$@"
   fi
 }
 EOF
-	echo "Added mlh wrapper function to ~/.bashrc"
+	echo "Added bookmark wrapper function to ~/.bashrc"
 fi
 
 # 2) Make scripts executable
