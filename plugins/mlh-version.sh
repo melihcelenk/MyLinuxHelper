@@ -217,8 +217,13 @@ update_to_latest() {
 	if bash "${temp_script}"; then
 		rm -f "${temp_script}"
 		echo ""
-		echo "Update completed successfully!"
-		echo "Please restart your shell or run: source ~/.bashrc"
+		echo "✅ Update completed successfully!"
+		echo ""
+		echo "Reloading shell to apply changes..."
+		echo ""
+		
+		# Reload the shell to apply new functions and updates
+		exec bash -l
 	else
 		rm -f "${temp_script}"
 		echo "Error: Update failed." >&2

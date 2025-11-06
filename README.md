@@ -5,6 +5,7 @@ A lightweight and modular collection of utility tools to simplify your Linux exp
 ## Features
 
 - **Interactive Command Menu**: Browse and explore all commands with the `mlh` interactive menu
+- **Quick Directory Bookmarks**: Save and jump to frequently used directories with the `bookmark` command
 - **Smart Docker Management**: Quickly enter running containers by name pattern with `mlh docker in`
 - **Enhanced Command History**: View command history with dates, search commands, and filter by date range using `mlh history`
 - **Fast File Search**: Find files quickly in current directory and subdirectories with the `search` command
@@ -70,6 +71,54 @@ mlh docker in web
 #
 # Select container [1-3]: 1
 ```
+
+#### `bookmark` - Quick Directory Bookmarks
+
+Save and jump to frequently used directories instantly:
+
+```bash
+# Save current directory (numbered bookmark)
+bookmark .
+
+# Jump to bookmark 1 (most recent)
+bookmark 1
+
+# Save with a memorable name
+bookmark . -n myproject
+
+# Jump to named bookmark
+bookmark myproject
+
+# Save with category for organization
+bookmark . -n mlh in projects/linux
+bookmark . -n api in projects/java
+
+# List all bookmarks (grouped by category)
+bookmark list
+
+# List specific category
+bookmark list projects
+
+# Move bookmark to different category
+bookmark mv mlh to tools
+
+# Show last 5 numbered bookmarks
+bookmark list 5
+
+# Rename numbered bookmark
+bookmark 1 -n webapp
+```
+
+**Key Features:**
+
+- **Stack-based numbered bookmarks**: Quick access to last 10 directories (auto-rotating)
+- **Named bookmarks**: Save important locations with memorable names
+- **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Category filtering**: List bookmarks by category
+- **Path validation**: Warns when bookmark path no longer exists
+- **Name conflict detection**: Prevents conflicts with system commands
+- **Instant navigation**: Jump to bookmarks without typing full paths
+- **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
 
 #### `linux` - Container Management
 Launch and manage isolated Linux containers quickly:

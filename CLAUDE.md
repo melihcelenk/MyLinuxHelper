@@ -27,6 +27,9 @@ The setup script automatically:
 - Creates symlinks for all commands in `~/.local/bin`
 - Adds `~/.local/bin` to PATH in `~/.bashrc` and `~/.profile`
 - Makes all plugin scripts executable
+- Installs wrapper functions in `~/.bashrc`:
+    - `mlh()` wrapper: Ensures current session history is visible
+    - `bookmark()` wrapper: Enables `cd` functionality for bookmark navigation
 - Re-execs the shell if commands aren't immediately available
 
 ## Architecture
@@ -104,37 +107,60 @@ Key feature: Automatically mounts the MyLinuxHelper repository at `/opt/mlh` ins
 - Manual updates via `mlh update`
 - Periodic update configuration (daily/weekly/monthly)
 - Auto-update hooks in `~/.bashrc`
+- **Automatic shell reload**: After update, automatically reloads shell with `exec bash -l`
 
 Configuration is stored in `~/.mylinuxhelper/.update-config`.
 
+**Update Process:**
+
+1. Downloads `get-mlh.sh` from GitHub
+2. Runs installation (updates files, runs `setup.sh`)
+3. Automatically reloads shell to apply wrapper functions and updates
+4. No manual `source ~/.bashrc` required
+
 ### Quick Directory Bookmarks
 
-`mlh-bookmark.sh` provides a fast navigation system:
+`mlh-bookmark.sh` provides a fast navigation system with hierarchical organization:
 
-**Features:**
+**Features (Phase 1 & 2 Complete):**
 
 - **Numbered stack**: Quick save/restore (max 10 bookmarks)
-- **Named bookmarks**: Persistent bookmarks with names
-- **Category support**: Organize bookmarks hierarchically (Phase 2)
+- **Named bookmarks**: Persistent bookmarks with memorable names
+- **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Category filtering**: List and filter by category
+- **Move bookmarks**: Relocate bookmarks between categories
 - **JSON storage**: `~/.mylinuxhelper/bookmarks.json`
+- **Shell integration**: Wrapper function enables instant `cd` navigation
 
 **Architecture:**
 
-- Stack-based unnamed bookmarks (LIFO)
-- Named bookmarks with access tracking
-- Command name conflict detection
-- Path validation with warnings
+- Stack-based unnamed bookmarks (LIFO, auto-rotating)
+- Named bookmarks with category support and access tracking
+- Command name conflict detection (prevents naming conflicts with system commands)
+- Path validation with warnings (⚠ symbol for missing paths)
 - jq-based JSON manipulation
+- Bash wrapper function for parent shell directory changes
 
 **Usage patterns:**
 
 ```bash
-bookmark .              # Save current dir (becomes #1)
-bookmark 1              # Jump to bookmark #1
-bookmark . -n myproject # Save with name
-bookmark myproject      # Jump to named bookmark
-bookmark list           # Show all bookmarks
+bookmark .                      # Save current dir (becomes #1)
+bookmark 1                      # Jump to bookmark #1
+bookmark . -n myproject         # Save with name
+bookmark . -n mlh in projects   # Save with category
+bookmark myproject              # Jump to named bookmark
+bookmark list                   # Show all bookmarks (grouped by category)
+bookmark list projects          # Filter by category
+bookmark mv mlh to tools        # Move bookmark to different category
 ```
+
+**Wrapper Function (setup.sh):**
+
+The `setup.sh` script automatically installs a wrapper function in `~/.bashrc` that enables `cd` functionality:
+
+- When jumping to bookmarks (`bookmark 1` or `bookmark name`), the wrapper evaluates the output
+- The script outputs a `cd` command that the wrapper executes in the parent shell
+- Other commands (`list`, `mv`, save operations) pass through normally
 
 **Storage format:**
 
@@ -295,14 +321,18 @@ When releasing a new version:
 ```
 /
 ├── get-mlh.sh          # Bootstrap installer (downloads repo)
-├── setup.sh            # Creates symlinks and configures PATH
+├── setup.sh            # Creates symlinks, configures PATH, installs wrapper functions
 ├── install.sh          # Universal package installer (provides 'i' command)
+├── README.md           # User documentation with usage examples
+├── CLAUDE.md           # Development documentation (this file)
+├── TODO.md             # Feature roadmap and implementation checklist
 ├── .gitignore          # Ignore IDE files, OS files, runtime data
 ├── plugins/
 │   ├── mlh.sh          # Main command dispatcher with interactive menu
-│   ├── mlh-bookmark.sh # Quick directory bookmarks (JSON-based storage)
+│   ├── mlh-bookmark.sh # Quick directory bookmarks (JSON-based, category support)
 │   ├── mlh-docker.sh   # Docker container shortcuts
 │   ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
+│   ├── mlh-history.sh  # Enhanced command history with date tracking
 │   ├── mlh-version.sh  # Version management and auto-update system
 │   ├── mlh-about.sh    # Project information
 │   ├── linux.sh        # Docker container lifecycle management
@@ -310,9 +340,12 @@ When releasing a new version:
 │   ├── isjsonvalid.sh  # Centralized JSON validation engine
 │   └── ll.sh           # ls -la shortcut
 └── tests/
-    ├── test                      # Main test runner framework
-    ├── test-mlh-bookmark.sh     # Bookmark tests (33 tests, requires jq)
-    ├── test-mlh-history.sh      # History tests
-    ├── test-mlh-json.sh         # JSON validation tests
+    ├── test                      # Main test runner framework (213 tests total)
+    ├── test-mlh-bookmark.sh     # Bookmark tests (47 tests, requires jq)
+    ├── test-mlh-history.sh      # History tests (34 tests)
+    ├── test-mlh-json.sh         # JSON validation tests (18 tests)
+    ├── test-mlh-docker.sh       # Docker tests (18 tests)
+    ├── test-current-session.sh  # Session history tests (1 test)
+    ├── test-time-debug.sh       # Time parsing tests (4 tests)
     └── ...
 ```
