@@ -21,8 +21,11 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 STATS_FILE=$(mktemp)
 echo "0 0 0 0" >"$STATS_FILE" # total passed failed skipped
 
-# Cleanup stats file on exit
-trap "rm -f '$STATS_FILE'" EXIT
+# Suite statistics file (one line per suite: suite_name total passed failed skipped)
+SUITE_STATS_FILE=$(mktemp)
+
+# Cleanup stats files on exit
+trap "rm -f '$STATS_FILE' '$SUITE_STATS_FILE'" EXIT
 
 load_stats() {
 	read -r TOTAL_TESTS PASSED_TESTS FAILED_TESTS SKIPPED_TESTS <"$STATS_FILE"
@@ -85,6 +88,38 @@ print_summary() {
 	echo -e "${CYAN}========================================${NC}"
 	echo -e "${CYAN}Test Summary${NC}"
 	echo -e "${CYAN}========================================${NC}"
+	
+	# Print per-suite results if any suites were run
+	if [ -s "$SUITE_STATS_FILE" ]; then
+		echo ""
+		echo -e "${CYAN}Results by Test Suite:${NC}"
+		echo ""
+		
+		while IFS='|' read -r suite_name suite_total suite_passed suite_failed suite_skipped; do
+			local status_indicator=""
+			local color=""
+			
+			if [ "$suite_failed" -gt 0 ]; then
+				status_indicator=" ${RED}[FAILURE]${NC}"
+				color="$RED"
+			else
+				status_indicator=" ${GREEN}[OK]${NC}"
+				color="$GREEN"
+			fi
+			
+			# Print suite results with proper formatting
+			printf "  %-25s" "$suite_name:"
+			if [ "$suite_failed" -gt 0 ]; then
+				echo -e "${RED}$suite_passed/$suite_total passed${NC}$status_indicator"
+			else
+				echo -e "${GREEN}$suite_passed/$suite_total passed${NC}$status_indicator"
+			fi
+		done < "$SUITE_STATS_FILE"
+		
+		echo ""
+	fi
+	
+	echo -e "${CYAN}Overall Results:${NC}"
 	echo -e "Total tests:  $TOTAL_TESTS"
 	echo -e "${GREEN}Passed:       $PASSED_TESTS${NC}"
 	if [ "$SKIPPED_TESTS" -gt 0 ]; then
@@ -127,6 +162,13 @@ run_test_suite() {
 		return 0 # Don't exit, just mark as failed and continue
 	fi
 
+	# Save stats before running suite to calculate delta
+	load_stats
+	local suite_start_total=$TOTAL_TESTS
+	local suite_start_passed=$PASSED_TESTS
+	local suite_start_failed=$FAILED_TESTS
+	local suite_start_skipped=$SKIPPED_TESTS
+
 	# Run test file in a subshell to isolate exit/trap statements
 	# We use ( ) subshell syntax to prevent 'exit' from killing the test runner
 	# Export necessary variables and functions for subshell
@@ -138,6 +180,16 @@ run_test_suite() {
 		# shellcheck source=/dev/null
 		source "$test_file"
 	)
+
+	# Calculate delta for this suite
+	load_stats
+	local suite_total=$((TOTAL_TESTS - suite_start_total))
+	local suite_passed=$((PASSED_TESTS - suite_start_passed))
+	local suite_failed=$((FAILED_TESTS - suite_start_failed))
+	local suite_skipped=$((SKIPPED_TESTS - suite_start_skipped))
+
+	# Save suite stats (pipe-delimited for easy parsing)
+	echo "${suite_name}|${suite_total}|${suite_passed}|${suite_failed}|${suite_skipped}" >> "$SUITE_STATS_FILE"
 }
 
 run_all_tests() {

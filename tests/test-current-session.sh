@@ -50,9 +50,9 @@ echo ""
 
 # Check if the new command appears
 if echo "$result" | grep -q "new command from session"; then
-	echo "✓ PASS: mlh history shows current session command"
+	print_test_result "mlh history shows current session command" "PASS"
 else
-	echo "✗ FAIL: mlh history does NOT show current session command"
+	print_test_result "mlh history shows current session command" "FAIL" "Current session command not found in history output"
 fi
 
 # Cleanup
