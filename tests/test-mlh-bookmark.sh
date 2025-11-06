@@ -442,5 +442,70 @@ else
 	print_test_result "Move non-existent bookmark fails gracefully" "FAIL" "Should show error"
 fi
 
+# ============================================================================
+# OUTPUT FORMAT & INTEGRATION TESTS
+# ============================================================================
+
+# Test 42: Help output uses echo -e for ANSI codes (not raw \033)
+# This ensures colors work properly when displayed
+help_output=$(bash "$PLUGIN_SCRIPT" --help 2>&1)
+if echo "$help_output" | grep -q '\\033'; then
+	print_test_result "Help output doesn't contain raw ANSI codes" "FAIL" "Found raw \\033 codes - need echo -e"
+else
+	print_test_result "Help output doesn't contain raw ANSI codes" "PASS"
+fi
+
+# Test 43: Jump command outputs valid cd command for shell sourcing
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1  # Create a bookmark
+jump_output=$(bash "$PLUGIN_SCRIPT" 1 2>&1)
+if echo "$jump_output" | grep -q '^cd "'; then
+	print_test_result "Jump command outputs valid cd command" "PASS"
+else
+	print_test_result "Jump command outputs valid cd command" "FAIL" "Expected 'cd \"path\"' format, got: $jump_output"
+fi
+
+# Test 44: Jump command output is eval-safe (properly quoted path)
+cd "$TEST_DIR_WITH_SPACES" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1  # Save path with spaces
+jump_output=$(bash "$PLUGIN_SCRIPT" 1 2>&1)
+cd_line=$(echo "$jump_output" | grep '^cd ')
+if [ -n "$cd_line" ]; then
+	# Try to eval the cd command (should not fail even with spaces)
+	if eval "$cd_line" 2>/dev/null; then
+		print_test_result "Jump command handles paths with spaces correctly" "PASS"
+	else
+		print_test_result "Jump command handles paths with spaces correctly" "FAIL" "eval failed on: $cd_line"
+	fi
+else
+	print_test_result "Jump command handles paths with spaces correctly" "FAIL" "No cd command in output"
+fi
+
+# Test 45: Named bookmark jump also outputs cd command
+bash "$PLUGIN_SCRIPT" . -n testjump >/dev/null 2>&1
+jump_output=$(bash "$PLUGIN_SCRIPT" testjump 2>&1)
+if echo "$jump_output" | grep -q '^cd "'; then
+	print_test_result "Named bookmark jump outputs cd command" "PASS"
+else
+	print_test_result "Named bookmark jump outputs cd command" "FAIL" "Expected 'cd \"path\"', got: $jump_output"
+fi
+
+# Test 46: List command output uses echo -e for colors
+bash "$PLUGIN_SCRIPT" . -n colortest in testcat >/dev/null 2>&1
+list_output=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+if echo "$list_output" | grep -q '\\033'; then
+	print_test_result "List output doesn't contain raw ANSI codes" "FAIL" "Found raw \\033 codes"
+else
+	print_test_result "List output doesn't contain raw ANSI codes" "PASS"
+fi
+
+# Test 47: Error messages use echo -e for colored output
+error_output=$(bash "$PLUGIN_SCRIPT" nonexistent 2>&1)
+if echo "$error_output" | grep -q '\\033'; then
+	print_test_result "Error messages don't contain raw ANSI codes" "FAIL" "Found raw \\033 codes"
+else
+	print_test_result "Error messages don't contain raw ANSI codes" "PASS"
+fi
+
 # Cleanup
 cleanup_bookmark_tests

@@ -427,10 +427,10 @@ list_bookmarks() {
 
 # Show help
 show_help() {
-	cat <<EOF
-${CYAN}mlh-bookmark.sh${NC} - Quick directory bookmark system (v$VERSION)
-
-${YELLOW}USAGE:${NC}
+	echo -e "${CYAN}mlh-bookmark.sh${NC} - Quick directory bookmark system (v$VERSION)"
+	echo ""
+	echo -e "${YELLOW}USAGE:${NC}"
+	cat <<'EOF'
   bookmark .                    Save current directory as numbered bookmark
   bookmark 1                    Jump to bookmark 1
   bookmark . -n <name>          Save current directory with name
@@ -442,32 +442,42 @@ ${YELLOW}USAGE:${NC}
   bookmark list <N>             List last N unnamed bookmarks
   bookmark mv <name> to <cat>   Move bookmark to category
   bookmark --help               Show this help
-
-${YELLOW}EXAMPLES:${NC}
-  ${GREEN}# Quick numbered bookmarks${NC}
+EOF
+	echo ""
+	echo -e "${YELLOW}EXAMPLES:${NC}"
+	echo -e "  ${GREEN}# Quick numbered bookmarks${NC}"
+	cat <<'EOF'
   bookmark .                    # Save current dir (becomes bookmark 1)
   cd /some/other/path
   bookmark .                    # Save another dir (becomes bookmark 1, previous becomes 2)
   bookmark 1                    # Jump to most recent bookmark
   bookmark 2                    # Jump to second most recent
-
-  ${GREEN}# Named bookmarks${NC}
+EOF
+	echo ""
+	echo -e "  ${GREEN}# Named bookmarks${NC}"
+	cat <<'EOF'
   bookmark . -n myproject       # Save current dir as 'myproject'
   bookmark myproject            # Jump to myproject
   bookmark 1 -n webapp          # Rename bookmark 1 to 'webapp'
-
-  ${GREEN}# Categorized bookmarks${NC}
+EOF
+	echo ""
+	echo -e "  ${GREEN}# Categorized bookmarks${NC}"
+	cat <<'EOF'
   bookmark . -n mlh in projects/linux    # Save with category
   bookmark 1 -n api in projects/java     # Rename with category
   bookmark mv mlh to tools               # Move to different category
-
-  ${GREEN}# List bookmarks${NC}
+EOF
+	echo ""
+	echo -e "  ${GREEN}# List bookmarks${NC}"
+	cat <<'EOF'
   bookmark list                 # Show all bookmarks (grouped by category)
   bookmark list projects        # Show only 'projects' category
   bookmark list projects/java   # Show nested category
   bookmark list 5               # Show last 5 unnamed bookmarks
-
-${YELLOW}FEATURES:${NC}
+EOF
+	echo ""
+	echo -e "${YELLOW}FEATURES:${NC}"
+	cat <<EOF
   • Stack-based numbered bookmarks (max 10)
   • Named bookmarks for important locations
   • Categorized bookmarks (hierarchical organization)
@@ -475,12 +485,13 @@ ${YELLOW}FEATURES:${NC}
   • Path validation and warnings
   • Command name conflict detection
   • JSON storage at: $BOOKMARK_FILE
-
-${YELLOW}SYMBOLS:${NC}
+EOF
+	echo ""
+	echo -e "${YELLOW}SYMBOLS:${NC}"
+	cat <<'EOF'
   ⚠  Path no longer exists on disk
   →  Navigating to bookmark
   ✓  Bookmark saved successfully
-
 EOF
 }
 

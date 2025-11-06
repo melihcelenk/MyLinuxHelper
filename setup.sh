@@ -37,6 +37,33 @@ mlh() {
   # Call the actual mlh script
   command mlh "$@"
 }
+
+# MyLinuxHelper - bookmark wrapper function
+# This wrapper enables 'cd' functionality by evaluating the output
+bookmark() {
+  local cmd="$1"
+  shift
+  
+  # For jumping to bookmarks (number or name), eval the output to enable cd
+  if [[ "$cmd" =~ ^[0-9]+$ ]] || [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ]; then
+    # This might be a bookmark name/number - check if it produces a cd command
+    local output
+    output=$(command bookmark "$cmd" "$@" 2>&1)
+    if echo "$output" | grep -q "^cd "; then
+      # Extract and execute the cd command
+      eval "$(echo "$output" | grep "^cd ")"
+      # Show the rest of the output (without the cd line)
+      echo "$output" | grep -v "^cd " >&2
+    else
+      # Not a jump command, just show the output
+      echo "$output"
+      return $?
+    fi
+  else
+    # For other commands (save, list, mv, help), just pass through
+    command bookmark "$cmd" "$@"
+  fi
+}
 EOF
 	echo "Added mlh wrapper function to ~/.bashrc"
 fi
