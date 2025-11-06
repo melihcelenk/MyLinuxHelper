@@ -411,7 +411,8 @@ bash "$PLUGIN_SCRIPT" . -n proj1 in projects/java >/dev/null 2>&1
 bash "$PLUGIN_SCRIPT" . -n proj2 in projects/python >/dev/null 2>&1
 bash "$PLUGIN_SCRIPT" . -n tool1 in tools >/dev/null 2>&1
 result=$(bash "$PLUGIN_SCRIPT" list projects 2>&1)
-if echo "$result" | grep -qi "projects/java\|projects/python" && ! echo "$result" | grep -qi "^[[:space:]]*\[tool1\]"; then
+# Check for proj1 and proj2 (hierarchical display shows "java" and "python" separately)
+if echo "$result" | grep -q "\[proj1\]" && echo "$result" | grep -q "\[proj2\]" && ! echo "$result" | grep -q "\[tool1\]"; then
 	print_test_result "Filter bookmarks by category" "PASS"
 else
 	print_test_result "Filter bookmarks by category" "FAIL" "Category filter not working"
@@ -528,9 +529,17 @@ else
 	print_test_result "Named bookmark removed from JSON" "PASS"
 fi
 
-# Test 50: Remove numbered bookmark
+# Test 50: Remove numbered bookmark and verify re-numbering
 cd "$TEST_DIR_1" || exit 1
-bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1  # Create bookmark 1
+# Clear unnamed bookmarks first to have clean state
+jq '.bookmarks.unnamed = []' "$TEST_BOOKMARK_FILE" > "$TEST_BOOKMARK_FILE.tmp" && mv "$TEST_BOOKMARK_FILE.tmp" "$TEST_BOOKMARK_FILE"
+# Create 3 numbered bookmarks
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+cd "$TEST_DIR_2" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+cd "$TEST_DIR_3" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+# Now we have bookmarks 1, 2, 3
 result=$(bash "$PLUGIN_SCRIPT" rm 1 2>&1)
 if echo "$result" | grep -qi "removed.*#1"; then
 	print_test_result "Remove numbered bookmark" "PASS"
@@ -538,11 +547,21 @@ else
 	print_test_result "Remove numbered bookmark" "FAIL" "Output: $result"
 fi
 
-# Test 51: Verify numbered bookmark was removed
-if jq -e '.bookmarks.unnamed[] | select(.id == 1)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1; then
-	print_test_result "Numbered bookmark removed from JSON" "FAIL" "Bookmark still exists"
+# Test 51: Verify re-numbering happened (should now have IDs 1 and 2 instead of 2 and 3)
+count=$(jq '.bookmarks.unnamed | length' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+if [ "$count" -eq 2 ]; then
+	# Check that IDs are 1 and 2 (re-numbered)
+	id1_exists=$(jq -e '.bookmarks.unnamed[] | select(.id == 1)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1 && echo "yes" || echo "no")
+	id2_exists=$(jq -e '.bookmarks.unnamed[] | select(.id == 2)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1 && echo "yes" || echo "no")
+	id3_exists=$(jq -e '.bookmarks.unnamed[] | select(.id == 3)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1 && echo "yes" || echo "no")
+	
+	if [ "$id1_exists" = "yes" ] && [ "$id2_exists" = "yes" ] && [ "$id3_exists" = "no" ]; then
+		print_test_result "Numbered bookmark removed from JSON" "PASS"
+	else
+		print_test_result "Numbered bookmark removed from JSON" "FAIL" "Re-numbering didn't work correctly"
+	fi
 else
-	print_test_result "Numbered bookmark removed from JSON" "PASS"
+	print_test_result "Numbered bookmark removed from JSON" "FAIL" "Expected 2 bookmarks, got $count"
 fi
 
 # Test 52: Remove non-existent bookmark fails gracefully
@@ -601,6 +620,148 @@ if [ "$count" -eq 2 ]; then
 	print_test_result "Bookmarks preserved after cancel" "PASS"
 else
 	print_test_result "Bookmarks preserved after cancel" "FAIL" "Expected 2, got: $count"
+fi
+
+# ============================================================================
+# PHASE 3: BOOKMARK EDIT & SEARCH
+# ============================================================================
+
+# Test 58: Edit bookmark - change name only
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . -n editme >/dev/null 2>&1
+# Input: newname (for name), empty (keep path), empty (no category)
+result=$(echo -e "newname\n\n" | bash "$PLUGIN_SCRIPT" edit editme 2>&1)
+if echo "$result" | grep -qi "updated"; then
+	print_test_result "Edit bookmark - change name" "PASS"
+else
+	print_test_result "Edit bookmark - change name" "FAIL" "Output: $result"
+fi
+
+# Test 59: Verify edited bookmark name in JSON
+new_name=$(jq -r '.bookmarks.named[] | select(.name == "newname") | .name' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+if [ "$new_name" = "newname" ]; then
+	print_test_result "Edited bookmark name updated in JSON" "PASS"
+else
+	print_test_result "Edited bookmark name updated in JSON" "FAIL" "Expected 'newname', got: $new_name"
+fi
+
+# Test 60: Edit non-existent bookmark fails
+result=$(bash "$PLUGIN_SCRIPT" edit nonexistent 2>&1)
+if echo "$result" | grep -qi "not found\|error"; then
+	print_test_result "Edit non-existent bookmark fails gracefully" "PASS"
+else
+	print_test_result "Edit non-existent bookmark fails gracefully" "FAIL" "Should show error"
+fi
+
+# Test 61: Find bookmarks by name pattern
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . -n searchtest1 in tools >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n searchtest2 in projects >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n other in tools >/dev/null 2>&1
+result=$(bash "$PLUGIN_SCRIPT" find "search" 2>&1)
+# Check if at least one searchtest bookmark is found
+if echo "$result" | grep -q "searchtest"; then
+	print_test_result "Find bookmarks by name pattern" "PASS"
+else
+	print_test_result "Find bookmarks by name pattern" "FAIL" "Output: $result"
+fi
+
+# Test 62: Find bookmarks by category
+result=$(bash "$PLUGIN_SCRIPT" find tools 2>&1)
+if echo "$result" | grep -qi "tools"; then
+	print_test_result "Find bookmarks by category" "PASS"
+else
+	print_test_result "Find bookmarks by category" "FAIL" "Should find bookmarks in tools category"
+fi
+
+# Test 63: Find bookmarks by path
+result=$(bash "$PLUGIN_SCRIPT" find "$TEST_DIR_1" 2>&1)
+if echo "$result" | grep -qi "$(basename "$TEST_DIR_1")"; then
+	print_test_result "Find bookmarks by path" "PASS"
+else
+	print_test_result "Find bookmarks by path" "FAIL" "Should find bookmarks matching path"
+fi
+
+# Test 64: Find with no matches
+result=$(bash "$PLUGIN_SCRIPT" find "xyznonexistentpattern987654321xyz" 2>&1)
+# Case insensitive check
+if echo "$result" | grep -qi "no bookmarks found"; then
+	print_test_result "Find with no matches shows appropriate message" "PASS"
+else
+	print_test_result "Find with no matches shows appropriate message" "FAIL" "Output: $result"
+fi
+
+# Test 65: Find without pattern fails
+result=$(bash "$PLUGIN_SCRIPT" find 2>&1)
+if echo "$result" | grep -qi "pattern required\|error"; then
+	print_test_result "Find without pattern shows error" "PASS"
+else
+	print_test_result "Find without pattern shows error" "FAIL" "Should require pattern"
+fi
+
+# ============================================================================
+# INTERACTIVE LIST - Function exists check (requires manual testing)
+# ============================================================================
+
+# Test 66: Interactive list function exists in script
+if grep -q "interactive_list()" "$PLUGIN_SCRIPT"; then
+	print_test_result "Interactive list function exists" "PASS"
+else
+	print_test_result "Interactive list function exists" "FAIL" "Function not found"
+fi
+
+# Test 67: Interactive list flag handling in list_bookmarks
+if grep -q -- '--interactive' "$PLUGIN_SCRIPT" && grep -q 'interactive_list' "$PLUGIN_SCRIPT"; then
+	print_test_result "Interactive list flag handling present" "PASS"
+else
+	print_test_result "Interactive list flag handling present" "FAIL" "Flag handling not found"
+fi
+
+# ============================================================================
+# BUG FIXES - Issue-specific tests
+# ============================================================================
+
+# Test 68: Edit prompt order (echo -n before read, not read -rp)
+if grep -q 'echo -n.*New name' "$PLUGIN_SCRIPT" && ! grep -q 'read -rp.*New name' "$PLUGIN_SCRIPT"; then
+	print_test_result "Edit uses proper prompt order (echo -n + read)" "PASS"
+else
+	print_test_result "Edit uses proper prompt order (echo -n + read)" "FAIL" "Should use echo -n before read, not read -rp"
+fi
+
+# Test 69: Interactive list TTY check and /dev/tty fallback
+if grep -q '/dev/tty' "$PLUGIN_SCRIPT" && grep -q '\[ ! -t 0 \]' "$PLUGIN_SCRIPT"; then
+	print_test_result "Interactive list has TTY check and /dev/tty fallback" "PASS"
+else
+	print_test_result "Interactive list has TTY check and /dev/tty fallback" "FAIL" "Missing TTY check or /dev/tty fallback"
+fi
+
+# Test 70: Hierarchical category display (check for IFS='/' split)
+if grep -q "IFS='/'" "$PLUGIN_SCRIPT" && grep -q 'parts' "$PLUGIN_SCRIPT"; then
+	print_test_result "Hierarchical category parsing exists" "PASS"
+else
+	print_test_result "Hierarchical category parsing exists" "FAIL" "Missing category hierarchy logic"
+fi
+
+# Test 71: Hierarchical category test with real data
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . -n bookmark1 in aaa/bbb >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n bookmark2 in aaa/bbb/ccc >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n bookmark3 in aaa >/dev/null 2>&1
+result=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+# Check if hierarchy is displayed (aaa should appear, then bbb under it, then ccc under bbb)
+if echo "$result" | grep -q "📂 aaa" && echo "$result" | grep -q "📂 bbb" && echo "$result" | grep -q "📂 ccc"; then
+	print_test_result "Hierarchical category display works" "PASS"
+else
+	print_test_result "Hierarchical category display works" "FAIL" "Categories not displayed hierarchically"
+fi
+
+# Test 72: Interactive mode /dev/tty reading (manual test required)
+# Note: Interactive mode reads from /dev/tty which bypasses piped input
+# This test verifies the code paths exist, but full testing requires manual verification
+if grep -q 'read.*< */dev/tty' "$PLUGIN_SCRIPT"; then
+	print_test_result "Interactive mode uses /dev/tty for input" "PASS"
+else
+	print_test_result "Interactive mode uses /dev/tty for input" "FAIL" "Missing /dev/tty input redirection"
 fi
 
 # Cleanup

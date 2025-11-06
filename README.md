@@ -100,6 +100,9 @@ bookmark . -n api in projects/java
 # List all bookmarks (grouped by category)
 bookmark list
 
+# Interactive list with arrow key navigation
+bookmark list -i
+
 # List specific category
 bookmark list projects
 
@@ -111,16 +114,32 @@ bookmark list 5
 
 # Rename numbered bookmark
 bookmark 1 -n webapp
+
+# Edit bookmark (name/path/category)
+bookmark edit mlh
+
+# Remove bookmark
+bookmark rm oldproject
+bookmark rm 3
+
+# Search bookmarks
+bookmark find java
+
+# Clear all numbered bookmarks
+bookmark clear
 ```
 
 **Key Features:**
 
-- **Stack-based numbered bookmarks**: Quick access to last 10 directories (auto-rotating)
+- **Stack-based numbered bookmarks**: Quick access to last 10 directories (auto-rotating, auto re-numbering)
 - **Named bookmarks**: Save important locations with memorable names
 - **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Interactive menu**: Navigate with arrow keys, edit, delete, search in real-time (`bookmark list -i`)
 - **Category filtering**: List bookmarks by category
+- **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
 - **Path validation**: Warns when bookmark path no longer exists
 - **Name conflict detection**: Prevents conflicts with system commands
+- **Bookmark management**: Edit, remove, clear bookmarks easily
 - **Instant navigation**: Jump to bookmarks without typing full paths
 - **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
 

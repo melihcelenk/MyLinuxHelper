@@ -51,6 +51,12 @@ if ! grep -Fq "$BOOKMARK_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
 bookmark() {
   local cmd="$1"
   
+  # Special handling for interactive list - must run directly without wrapper interference
+  if [ "$cmd" = "list" ] && ( [ "$2" = "-i" ] || [ "$2" = "--interactive" ] ); then
+    command bookmark "$@"
+    return $?
+  fi
+  
   # For jumping to bookmarks (number or name), eval the output to enable cd
   if [[ "$cmd" =~ ^[0-9]+$ ]] || ( [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ] ); then
     # This might be a bookmark name/number - check if it produces a cd command

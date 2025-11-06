@@ -122,13 +122,20 @@ Configuration is stored in `~/.mylinuxhelper/.update-config`.
 
 `mlh-bookmark.sh` provides a fast navigation system with hierarchical organization:
 
-**Features (Phase 1 & 2 Complete):**
+**Features (Phase 1, 2 & 3 Complete):**
 
-- **Numbered stack**: Quick save/restore (max 10 bookmarks)
+- **Numbered stack**: Quick save/restore (max 10 bookmarks, auto re-numbering on delete)
 - **Named bookmarks**: Persistent bookmarks with memorable names
 - **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Interactive menu**: Full-featured TUI with arrow key navigation (`bookmark list -i`)
+    - Navigate with ↑/↓ or j/k (vim-style)
+    - Jump, edit, delete bookmarks in real-time
+    - Hierarchical category display
+    - Built-in help menu ('h' key)
 - **Category filtering**: List and filter by category
 - **Move bookmarks**: Relocate bookmarks between categories
+- **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
+- **Bookmark management**: Edit, remove, clear operations
 - **JSON storage**: `~/.mylinuxhelper/bookmarks.json`
 - **Shell integration**: Wrapper function enables instant `cd` navigation
 
@@ -150,8 +157,14 @@ bookmark . -n myproject         # Save with name
 bookmark . -n mlh in projects   # Save with category
 bookmark myproject              # Jump to named bookmark
 bookmark list                   # Show all bookmarks (grouped by category)
+bookmark list -i                # Interactive menu (arrow keys, edit, delete)
 bookmark list projects          # Filter by category
 bookmark mv mlh to tools        # Move bookmark to different category
+bookmark edit myproject         # Edit bookmark (name/path/category)
+bookmark rm myproject           # Remove bookmark
+bookmark rm 2                   # Remove #2 (auto re-numbers remaining)
+bookmark find java              # Search bookmarks
+bookmark clear                  # Clear all numbered bookmarks
 ```
 
 **Wrapper Function (setup.sh):**
@@ -234,7 +247,7 @@ bash tests/test mlh-bookmark
 ```bash
 tests/
 ├── test                      # Main test runner
-├── test-mlh-bookmark.sh     # Bookmark feature tests (33 tests)
+├── test-mlh-bookmark.sh     # Bookmark feature tests (72 tests - Phase 1, 2 & 3 + bug fixes)
 ├── test-mlh-history.sh      # History feature tests
 ├── test-mlh-json.sh         # JSON validation tests
 └── ...
@@ -340,8 +353,8 @@ When releasing a new version:
 │   ├── isjsonvalid.sh  # Centralized JSON validation engine
 │   └── ll.sh           # ls -la shortcut
 └── tests/
-    ├── test                      # Main test runner framework (213 tests total)
-    ├── test-mlh-bookmark.sh     # Bookmark tests (47 tests, requires jq)
+    ├── test                      # Main test runner framework (238 tests total)
+    ├── test-mlh-bookmark.sh     # Bookmark tests (72 tests, requires jq)
     ├── test-mlh-history.sh      # History tests (34 tests)
     ├── test-mlh-json.sh         # JSON validation tests (18 tests)
     ├── test-mlh-docker.sh       # Docker tests (18 tests)
