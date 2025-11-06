@@ -280,35 +280,113 @@ jump_to_bookmark() {
 	echo -e "${GREEN}→${NC} $path" >&2
 }
 
+# Move bookmark to a different category
+move_bookmark() {
+	local name="$1"
+	local new_category="$2"
+
+	[ ! -f "$BOOKMARK_FILE" ] && init_bookmark_file
+
+	# Check if bookmark exists
+	local exists
+	exists=$(jq --arg name "$name" '.bookmarks.named | any(.name == $name)' "$BOOKMARK_FILE" 2>/dev/null)
+
+	if [ "$exists" != "true" ]; then
+		echo -e "${RED}Error: Bookmark '$name' not found${NC}" >&2
+		return 1
+	fi
+
+	# Update the category
+	local temp_file
+	temp_file=$(mktemp)
+
+	jq --arg name "$name" \
+		--arg category "$new_category" \
+		'(.bookmarks.named[] | select(.name == $name) | .category) = $category' \
+		"$BOOKMARK_FILE" >"$temp_file"
+
+	mv "$temp_file" "$BOOKMARK_FILE"
+
+	echo -e "${GREEN}✓ Moved bookmark:${NC} $name ${GRAY}→ Category:${NC} ${CYAN}$new_category${NC}"
+}
+
 # List all bookmarks
 list_bookmarks() {
-	local limit="${1:-}"
+	local filter_category="${1:-}"
+	local limit=""
+
+	# Check if argument is a number (limit) or string (category filter)
+	if [ -n "$filter_category" ] && [[ "$filter_category" =~ ^[0-9]+$ ]]; then
+		limit="$filter_category"
+		filter_category=""
+	fi
 
 	[ ! -f "$BOOKMARK_FILE" ] && init_bookmark_file
 
 	echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-	echo -e "${CYAN}📚 Bookmarks${NC}"
+	if [ -n "$filter_category" ]; then
+		echo -e "${CYAN}📚 Bookmarks in category: ${YELLOW}$filter_category${NC}"
+	else
+		echo -e "${CYAN}📚 Bookmarks${NC}"
+	fi
 	echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 	echo ""
 
-	# Named bookmarks
+	# Named bookmarks - grouped by category
 	local named_count
-	named_count=$(jq '.bookmarks.named | length' "$BOOKMARK_FILE" 2>/dev/null)
+	if [ -n "$filter_category" ]; then
+		named_count=$(jq --arg cat "$filter_category" '[.bookmarks.named[] | select(.category == $cat or (.category // "" | startswith($cat + "/")))] | length' "$BOOKMARK_FILE" 2>/dev/null)
+	else
+		named_count=$(jq '.bookmarks.named | length' "$BOOKMARK_FILE" 2>/dev/null)
+	fi
 
 	if [ "$named_count" -gt 0 ]; then
 		echo -e "${BLUE}📂 Named Bookmarks${NC}"
-		jq -r '.bookmarks.named[] |
-               "  [\(.name)]  \(.path)  \(.created | split("T")[0])"' \
-			"$BOOKMARK_FILE" 2>/dev/null | while IFS= read -r line; do
-			# Check if path exists and add warning symbol
-			local path
-			path=$(echo "$line" | awk '{print $2}')
-			if [ -d "$path" ]; then
-				echo -e "$line"
-			else
-				echo -e "$line ${YELLOW}⚠${NC}"
+		
+		# Group bookmarks by category
+		local categories
+		if [ -n "$filter_category" ]; then
+			categories=$(jq -r --arg cat "$filter_category" '[.bookmarks.named[] | select(.category == $cat or (.category // "" | startswith($cat + "/")))] | group_by(.category // "Uncategorized") | .[] | .[0].category // "Uncategorized"' "$BOOKMARK_FILE" 2>/dev/null | sort -u)
+		else
+			categories=$(jq -r '.bookmarks.named | group_by(.category // "Uncategorized") | .[] | .[0].category // "Uncategorized"' "$BOOKMARK_FILE" 2>/dev/null | sort -u)
+		fi
+		
+		while IFS= read -r category; do
+			if [ -n "$category" ] && [ "$category" != "null" ]; then
+				if [ "$category" = "Uncategorized" ]; then
+					echo -e "  ${GRAY}📁 Uncategorized${NC}"
+				else
+					echo -e "  ${GREEN}📁 $category${NC}"
+				fi
+				
+				# Show bookmarks in this category
+				if [ "$category" = "Uncategorized" ]; then
+					jq -r '.bookmarks.named[] | select((.category // "") == "") |
+						   "    [\(.name)]  \(.path)  \(.created | split("T")[0])"' \
+						"$BOOKMARK_FILE" 2>/dev/null | while IFS= read -r line; do
+						local path
+						path=$(echo "$line" | awk '{print $2}')
+						if [ -d "$path" ]; then
+							echo -e "$line"
+						else
+							echo -e "$line ${YELLOW}⚠${NC}"
+						fi
+					done
+				else
+					jq -r --arg cat "$category" '.bookmarks.named[] | select(.category == $cat) |
+						   "    [\(.name)]  \(.path)  \(.created | split("T")[0])"' \
+						"$BOOKMARK_FILE" 2>/dev/null | while IFS= read -r line; do
+						local path
+						path=$(echo "$line" | awk '{print $2}')
+						if [ -d "$path" ]; then
+							echo -e "$line"
+						else
+							echo -e "$line ${YELLOW}⚠${NC}"
+						fi
+					done
+				fi
 			fi
-		done
+		done <<< "$categories"
 		echo ""
 	fi
 
@@ -356,10 +434,13 @@ ${YELLOW}USAGE:${NC}
   bookmark .                    Save current directory as numbered bookmark
   bookmark 1                    Jump to bookmark 1
   bookmark . -n <name>          Save current directory with name
+  bookmark . -n <name> in <cat> Save with category
   bookmark <name>               Jump to named bookmark
   bookmark 1 -n <name>          Rename bookmark 1 to name
   bookmark list                 List all bookmarks
+  bookmark list <category>      List bookmarks in category
   bookmark list <N>             List last N unnamed bookmarks
+  bookmark mv <name> to <cat>   Move bookmark to category
   bookmark --help               Show this help
 
 ${YELLOW}EXAMPLES:${NC}
@@ -375,13 +456,22 @@ ${YELLOW}EXAMPLES:${NC}
   bookmark myproject            # Jump to myproject
   bookmark 1 -n webapp          # Rename bookmark 1 to 'webapp'
 
+  ${GREEN}# Categorized bookmarks${NC}
+  bookmark . -n mlh in projects/linux    # Save with category
+  bookmark 1 -n api in projects/java     # Rename with category
+  bookmark mv mlh to tools               # Move to different category
+
   ${GREEN}# List bookmarks${NC}
-  bookmark list                 # Show all bookmarks
+  bookmark list                 # Show all bookmarks (grouped by category)
+  bookmark list projects        # Show only 'projects' category
+  bookmark list projects/java   # Show nested category
   bookmark list 5               # Show last 5 unnamed bookmarks
 
 ${YELLOW}FEATURES:${NC}
   • Stack-based numbered bookmarks (max 10)
   • Named bookmarks for important locations
+  • Categorized bookmarks (hierarchical organization)
+  • Category filtering in list view
   • Path validation and warnings
   • Command name conflict detection
   • JSON storage at: $BOOKMARK_FILE
@@ -419,6 +509,17 @@ main() {
 		check_jq
 		shift
 		list_bookmarks "$@"
+		exit 0
+		;;
+	mv)
+		# bookmark mv <name> to <category>
+		check_jq
+		if [ $# -lt 4 ] || [ "$3" != "to" ]; then
+			echo -e "${RED}Error: Invalid syntax${NC}" >&2
+			echo -e "${YELLOW}Usage: bookmark mv <name> to <category>${NC}" >&2
+			exit 1
+		fi
+		move_bookmark "$2" "$4"
 		exit 0
 		;;
 	.)

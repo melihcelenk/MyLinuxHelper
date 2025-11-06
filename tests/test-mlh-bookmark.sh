@@ -368,5 +368,79 @@ else
 	print_test_result "Concurrent bookmark creation maintains JSON validity" "FAIL" "JSON corrupted by concurrent writes"
 fi
 
+# ============================================================================
+# CATEGORY TESTS (Phase 2)
+# ============================================================================
+
+# Test 34: Save bookmark with category
+cd "$TEST_DIR_1" || exit 1
+result=$(bash "$PLUGIN_SCRIPT" . -n cattest in projects/test 2>&1)
+if echo "$result" | grep -qi "category.*projects/test"; then
+	print_test_result "Save bookmark with category" "PASS"
+else
+	print_test_result "Save bookmark with category" "FAIL" "Output: $result"
+fi
+
+# Test 35: Category stored correctly in JSON
+category=$(jq -r '.bookmarks.named[] | select(.name == "cattest") | .category' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+if [ "$category" = "projects/test" ]; then
+	print_test_result "Category stored correctly in JSON" "PASS"
+else
+	print_test_result "Category stored correctly in JSON" "FAIL" "Expected 'projects/test', got: $category"
+fi
+
+# Test 36: Rename bookmark with category
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1 # Create unnamed bookmark
+result=$(bash "$PLUGIN_SCRIPT" 1 -n renamedcat in tools 2>&1)
+if echo "$result" | grep -qi "category.*tools"; then
+	print_test_result "Rename bookmark with category" "PASS"
+else
+	print_test_result "Rename bookmark with category" "FAIL" "Output: $result"
+fi
+
+# Test 37: List bookmarks shows categories
+result=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+if echo "$result" | grep -qi "projects/test\|tools"; then
+	print_test_result "List bookmarks shows categories" "PASS"
+else
+	print_test_result "List bookmarks shows categories" "FAIL" "Categories not shown in output"
+fi
+
+# Test 38: Filter bookmarks by category
+bash "$PLUGIN_SCRIPT" . -n proj1 in projects/java >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n proj2 in projects/python >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n tool1 in tools >/dev/null 2>&1
+result=$(bash "$PLUGIN_SCRIPT" list projects 2>&1)
+if echo "$result" | grep -qi "projects/java\|projects/python" && ! echo "$result" | grep -qi "^[[:space:]]*\[tool1\]"; then
+	print_test_result "Filter bookmarks by category" "PASS"
+else
+	print_test_result "Filter bookmarks by category" "FAIL" "Category filter not working"
+fi
+
+# Test 39: Move bookmark to different category
+bash "$PLUGIN_SCRIPT" . -n moveme in oldcat >/dev/null 2>&1
+result=$(bash "$PLUGIN_SCRIPT" mv moveme to newcat 2>&1)
+if echo "$result" | grep -qi "moved.*newcat"; then
+	print_test_result "Move bookmark to different category" "PASS"
+else
+	print_test_result "Move bookmark to different category" "FAIL" "Output: $result"
+fi
+
+# Test 40: Verify moved bookmark has new category
+new_category=$(jq -r '.bookmarks.named[] | select(.name == "moveme") | .category' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+if [ "$new_category" = "newcat" ]; then
+	print_test_result "Moved bookmark has correct new category" "PASS"
+else
+	print_test_result "Moved bookmark has correct new category" "FAIL" "Expected 'newcat', got: $new_category"
+fi
+
+# Test 41: Move non-existent bookmark fails gracefully
+result=$(bash "$PLUGIN_SCRIPT" mv nonexistent to somecat 2>&1)
+if echo "$result" | grep -qi "not found\|error"; then
+	print_test_result "Move non-existent bookmark fails gracefully" "PASS"
+else
+	print_test_result "Move non-existent bookmark fails gracefully" "FAIL" "Should show error"
+fi
+
 # Cleanup
 cleanup_bookmark_tests
