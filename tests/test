@@ -47,6 +47,12 @@ print_test_result() {
 		if [ -n "$message" ]; then
 			echo -e "  ${YELLOW}$message${NC}"
 		fi
+	elif [ "$result" = "NOT_FOUND" ]; then
+		FAILED_TESTS=$((FAILED_TESTS + 1))
+		echo -e "${YELLOW}⚠ NOT FOUND${NC}: $test_name"
+		if [ -n "$message" ]; then
+			echo -e "  ${YELLOW}$message${NC}"
+		fi
 	else
 		FAILED_TESTS=$((FAILED_TESTS + 1))
 		echo -e "${RED}✗ FAIL${NC}: $test_name"
@@ -77,7 +83,7 @@ print_summary() {
 		echo -e "${GREEN}All tests passed!${NC}"
 		return 0
 	else
-		echo -e "${RED}Some tests failed!${NC}"
+		echo -e "${RED}TEST FAILURE${NC}"
 		return 1
 	fi
 }
@@ -87,8 +93,8 @@ run_test_suite() {
 	local test_file="$SCRIPT_DIR/test-${suite_name}.sh"
 
 	if [ ! -f "$test_file" ]; then
-		echo -e "${RED}Error: Test suite '$suite_name' not found at: $test_file${NC}"
-		return 1
+		print_test_result "Test suite '$suite_name'" "NOT_FOUND" "Test file not found: $test_file"
+		return 0
 	fi
 
 	print_header "Running test suite: $suite_name"
