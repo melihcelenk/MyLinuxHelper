@@ -507,5 +507,101 @@ else
 	print_test_result "Error messages don't contain raw ANSI codes" "PASS"
 fi
 
+# ============================================================================
+# PHASE 3: BOOKMARK MANAGEMENT (rm, clear)
+# ============================================================================
+
+# Test 48: Remove named bookmark
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . -n rmtest >/dev/null 2>&1
+result=$(bash "$PLUGIN_SCRIPT" rm rmtest 2>&1)
+if echo "$result" | grep -qi "removed.*rmtest"; then
+	print_test_result "Remove named bookmark" "PASS"
+else
+	print_test_result "Remove named bookmark" "FAIL" "Output: $result"
+fi
+
+# Test 49: Verify bookmark was removed from JSON
+if jq -e '.bookmarks.named[] | select(.name == "rmtest")' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1; then
+	print_test_result "Named bookmark removed from JSON" "FAIL" "Bookmark still exists in JSON"
+else
+	print_test_result "Named bookmark removed from JSON" "PASS"
+fi
+
+# Test 50: Remove numbered bookmark
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1  # Create bookmark 1
+result=$(bash "$PLUGIN_SCRIPT" rm 1 2>&1)
+if echo "$result" | grep -qi "removed.*#1"; then
+	print_test_result "Remove numbered bookmark" "PASS"
+else
+	print_test_result "Remove numbered bookmark" "FAIL" "Output: $result"
+fi
+
+# Test 51: Verify numbered bookmark was removed
+if jq -e '.bookmarks.unnamed[] | select(.id == 1)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1; then
+	print_test_result "Numbered bookmark removed from JSON" "FAIL" "Bookmark still exists"
+else
+	print_test_result "Numbered bookmark removed from JSON" "PASS"
+fi
+
+# Test 52: Remove non-existent bookmark fails gracefully
+result=$(bash "$PLUGIN_SCRIPT" rm nonexistent 2>&1)
+if echo "$result" | grep -qi "not found\|error"; then
+	print_test_result "Remove non-existent bookmark fails gracefully" "PASS"
+else
+	print_test_result "Remove non-existent bookmark fails gracefully" "FAIL" "Should show error"
+fi
+
+# Test 53: Clear command with no unnamed bookmarks
+jq '.bookmarks.unnamed = []' "$TEST_BOOKMARK_FILE" > "$TEST_BOOKMARK_FILE.tmp" && mv "$TEST_BOOKMARK_FILE.tmp" "$TEST_BOOKMARK_FILE"
+result=$(echo "n" | bash "$PLUGIN_SCRIPT" clear 2>&1)
+if echo "$result" | grep -qi "no unnamed bookmarks"; then
+	print_test_result "Clear command with no unnamed bookmarks" "PASS"
+else
+	print_test_result "Clear command with no unnamed bookmarks" "FAIL" "Output: $result"
+fi
+
+# Test 54: Clear unnamed bookmarks (with confirmation)
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+# Confirm with 'y'
+result=$(echo "y" | bash "$PLUGIN_SCRIPT" clear 2>&1)
+if echo "$result" | grep -qi "cleared.*3.*unnamed"; then
+	print_test_result "Clear unnamed bookmarks with confirmation" "PASS"
+else
+	print_test_result "Clear unnamed bookmarks with confirmation" "FAIL" "Output: $result"
+fi
+
+# Test 55: Verify unnamed bookmarks were cleared
+count=$(jq '.bookmarks.unnamed | length' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+if [ "$count" -eq 0 ]; then
+	print_test_result "Unnamed bookmarks cleared from JSON" "PASS"
+else
+	print_test_result "Unnamed bookmarks cleared from JSON" "FAIL" "Expected 0, got: $count"
+fi
+
+# Test 56: Clear cancelled by user
+cd "$TEST_DIR_1" || exit 1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
+# Cancel with 'n'
+result=$(echo "n" | bash "$PLUGIN_SCRIPT" clear 2>&1)
+if echo "$result" | grep -qi "cancelled"; then
+	print_test_result "Clear cancelled by user" "PASS"
+else
+	print_test_result "Clear cancelled by user" "FAIL" "Should show 'Cancelled'"
+fi
+
+# Test 57: Verify bookmarks not cleared after cancellation
+count=$(jq '.bookmarks.unnamed | length' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+if [ "$count" -eq 2 ]; then
+	print_test_result "Bookmarks preserved after cancel" "PASS"
+else
+	print_test_result "Bookmarks preserved after cancel" "FAIL" "Expected 2, got: $count"
+fi
+
 # Cleanup
 cleanup_bookmark_tests

@@ -310,6 +310,84 @@ move_bookmark() {
 	echo -e "${GREEN}✓ Moved bookmark:${NC} $name ${GRAY}→ Category:${NC} ${CYAN}$new_category${NC}"
 }
 
+# Remove a bookmark
+remove_bookmark() {
+	local name="$1"
+
+	[ ! -f "$BOOKMARK_FILE" ] && init_bookmark_file
+
+	# Check if it's a number (unnamed bookmark)
+	if [[ "$name" =~ ^[0-9]+$ ]]; then
+		local exists
+		exists=$(jq --arg id "$name" '.bookmarks.unnamed | any(.id == ($id | tonumber))' "$BOOKMARK_FILE" 2>/dev/null)
+
+		if [ "$exists" != "true" ]; then
+			echo -e "${RED}Error: Bookmark #$name not found${NC}" >&2
+			return 1
+		fi
+
+		# Remove unnamed bookmark
+		local temp_file
+		temp_file=$(mktemp)
+
+		jq --arg id "$name" '.bookmarks.unnamed |= map(select(.id != ($id | tonumber)))' \
+			"$BOOKMARK_FILE" >"$temp_file"
+
+		mv "$temp_file" "$BOOKMARK_FILE"
+
+		echo -e "${GREEN}✓ Removed bookmark #$name${NC}"
+	else
+		# Check if named bookmark exists
+		local exists
+		exists=$(jq --arg name "$name" '.bookmarks.named | any(.name == $name)' "$BOOKMARK_FILE" 2>/dev/null)
+
+		if [ "$exists" != "true" ]; then
+			echo -e "${RED}Error: Bookmark '$name' not found${NC}" >&2
+			return 1
+		fi
+
+		# Remove named bookmark
+		local temp_file
+		temp_file=$(mktemp)
+
+		jq --arg name "$name" '.bookmarks.named |= map(select(.name != $name))' \
+			"$BOOKMARK_FILE" >"$temp_file"
+
+		mv "$temp_file" "$BOOKMARK_FILE"
+
+		echo -e "${GREEN}✓ Removed bookmark:${NC} $name"
+	fi
+}
+
+# Clear all unnamed bookmarks
+clear_unnamed_bookmarks() {
+	[ ! -f "$BOOKMARK_FILE" ] && init_bookmark_file
+
+	local count
+	count=$(jq '.bookmarks.unnamed | length' "$BOOKMARK_FILE" 2>/dev/null)
+
+	if [ "$count" -eq 0 ]; then
+		echo -e "${YELLOW}No unnamed bookmarks to clear${NC}"
+		return 0
+	fi
+
+	# Ask for confirmation
+	echo -e "${YELLOW}⚠ This will remove all $count unnamed bookmarks${NC}"
+	read -rp "Are you sure? [y/N]: " confirm
+
+	if [[ "$confirm" =~ ^[Yy]$ ]]; then
+		local temp_file
+		temp_file=$(mktemp)
+
+		jq '.bookmarks.unnamed = []' "$BOOKMARK_FILE" >"$temp_file"
+		mv "$temp_file" "$BOOKMARK_FILE"
+
+		echo -e "${GREEN}✓ Cleared $count unnamed bookmarks${NC}"
+	else
+		echo "Cancelled"
+	fi
+}
+
 # List all bookmarks
 list_bookmarks() {
 	local filter_category="${1:-}"
@@ -441,6 +519,8 @@ show_help() {
   bookmark list <category>      List bookmarks in category
   bookmark list <N>             List last N unnamed bookmarks
   bookmark mv <name> to <cat>   Move bookmark to category
+  bookmark rm <name|number>     Remove a bookmark
+  bookmark clear                Clear all unnamed bookmarks
   bookmark --help               Show this help
 EOF
 	echo ""
@@ -474,6 +554,13 @@ EOF
   bookmark list projects        # Show only 'projects' category
   bookmark list projects/java   # Show nested category
   bookmark list 5               # Show last 5 unnamed bookmarks
+EOF
+	echo ""
+	echo -e "  ${GREEN}# Remove bookmarks${NC}"
+	cat <<'EOF'
+  bookmark rm myproject         # Remove named bookmark
+  bookmark rm 1                 # Remove numbered bookmark
+  bookmark clear                # Clear all unnamed bookmarks
 EOF
 	echo ""
 	echo -e "${YELLOW}FEATURES:${NC}"
@@ -531,6 +618,23 @@ main() {
 			exit 1
 		fi
 		move_bookmark "$2" "$4"
+		exit 0
+		;;
+	rm)
+		# bookmark rm <name|number>
+		check_jq
+		if [ $# -lt 2 ]; then
+			echo -e "${RED}Error: Missing bookmark name or number${NC}" >&2
+			echo -e "${YELLOW}Usage: bookmark rm <name|number>${NC}" >&2
+			exit 1
+		fi
+		remove_bookmark "$2"
+		exit 0
+		;;
+	clear)
+		# bookmark clear - clear all unnamed bookmarks
+		check_jq
+		clear_unnamed_bookmarks
 		exit 0
 		;;
 	.)

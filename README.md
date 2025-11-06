@@ -26,9 +26,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/melihcelenk/MyLinuxHelpe
 
 ## 🚀 Usage
 
-### Available Commands
+---
 
-#### `mlh` - Interactive Command Menu
+### 📋 `mlh` - Interactive Command Menu
 Browse all available commands interactively:
 ```bash
 # Show interactive menu
@@ -56,7 +56,9 @@ MyLinuxHelper - Available Commands
 Select [1-5, q]:
 ```
 
-#### `mlh docker in` - Smart Container Access
+---
+
+### 🐳 `mlh docker in` - Smart Container Access
 Enter running Docker containers by name pattern:
 ```bash
 # Enter container by name
@@ -72,7 +74,9 @@ mlh docker in web
 # Select container [1-3]: 1
 ```
 
-#### `bookmark` - Quick Directory Bookmarks
+---
+
+### 🔖 `bookmark` - Quick Directory Bookmarks
 
 Save and jump to frequently used directories instantly:
 
@@ -120,7 +124,9 @@ bookmark 1 -n webapp
 - **Instant navigation**: Jump to bookmarks without typing full paths
 - **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
 
-#### `linux` - Container Management
+---
+
+### 📦 `linux` - Container Management
 Launch and manage isolated Linux containers quickly:
 ```bash
 # Create ephemeral container (auto-removed on exit)
@@ -142,7 +148,9 @@ linux -i debian:12 mycontainer
 linux -m "$PWD:/workspace" -p mycontainer
 ```
 
-#### `mlh history` - Enhanced Command History
+---
+
+### 📜 `mlh history` - Enhanced Command History
 View command history with dates, search, and filtering:
 ```bash
 # Show last 100 commands (default)
@@ -188,7 +196,9 @@ mlh history -c
 - **Helpful messages**: When no results found, shows latest command timestamp with suggestions
 - **Non-intrusive**: Doesn't affect the system `history` command
 
-#### `i` - Smart Package Installer
+---
+
+### 📥 `i` - Smart Package Installer
 Automatically detects your package manager (apt, yum, dnf, etc.) and installs packages:
 ```bash
 # Install a package
@@ -201,7 +211,9 @@ i git curl wget
 i --help
 ```
 
-#### `mlh json` / `isjsonvalid` - JSON Operations
+---
+
+### 🔍 `mlh json` / `isjsonvalid` - JSON Operations
 Advanced JSON validation and fuzzy search with intelligent path navigation:
 ```bash
 # Quick validation (Yes/No output)
@@ -245,7 +257,10 @@ mlh json --help
 - Interactive menu for multiple matches
 - Auto-installs `jq` if needed
 
-#### `ll` - Enhanced Directory Listing
+---
+
+### 📁 `ll` - Enhanced Directory Listing
+
 Shortcut for `ls -la` to view detailed file information:
 ```bash
 # List current directory
@@ -258,7 +273,10 @@ ll /var/log
 ll *.json
 ```
 
-#### `search` - Fast File Search
+---
+
+### 🔎 `search` - Fast File Search
+
 Find files quickly in current directory and subdirectories:
 ```bash
 # Search for file by name
