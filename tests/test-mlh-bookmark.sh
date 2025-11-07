@@ -764,5 +764,47 @@ else
 	print_test_result "Interactive mode uses /dev/tty for input" "FAIL" "Missing /dev/tty input redirection"
 fi
 
+# Test 73: Wrapper function handles interactive mode cd (ranger-style fixed temp file)
+# The wrapper function should use fixed temp file path to communicate cd commands from interactive mode
+setup_script="$ROOT_DIR/setup.sh"
+if [ -f "$setup_script" ]; then
+	# Extract the wrapper function from setup.sh
+	wrapper_content=$(sed -n '/# MyLinuxHelper - bookmark wrapper function/,/^}/p' "$setup_script" 2>/dev/null)
+
+	# Check if interactive mode handling uses fixed temp file (ranger-style)
+	# The fix should:
+	# 1. Use fixed path: tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
+	# 2. Clean temp file: rm -f "$tmp_cd_file"
+	# 3. Run command directly: command bookmark "$@" (not captured)
+	# 4. Source the temp file if exists: source "$tmp_cd_file"
+
+	if echo "$wrapper_content" | grep -A 15 'interactive' | grep -q '/tmp/bookmark-cd-' && \
+	   echo "$wrapper_content" | grep -A 15 'interactive' | grep -q 'rm -f.*tmp_cd_file' && \
+	   echo "$wrapper_content" | grep -A 15 'interactive' | grep -q 'source.*tmp_cd_file'; then
+		print_test_result "Wrapper function uses ranger-style fixed temp file for cd" "PASS"
+	else
+		print_test_result "Wrapper function uses ranger-style fixed temp file for cd" "FAIL" "Interactive mode should use fixed temp file path"
+	fi
+else
+	print_test_result "Wrapper function uses ranger-style fixed temp file for cd" "SKIP" "setup.sh not found"
+fi
+
+# Test 74: Plugin code writes to fixed temp file in interactive mode
+# Check that the Enter key handler in interactive mode writes to the ranger-style temp file
+plugin_file="$ROOT_DIR/plugins/mlh-bookmark.sh"
+if [ -f "$plugin_file" ]; then
+	# Check for the fixed temp file usage in interactive Enter handler
+	# Should contain: tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
+	# Should contain: echo "cd \"$bookmark_path\"" > "$tmp_cd_file"
+	if grep -A 5 "# Write cd command to fixed temp file" "$plugin_file" | grep -q '/tmp/bookmark-cd-' && \
+	   grep -A 5 "# Write cd command to fixed temp file" "$plugin_file" | grep -q 'echo "cd'; then
+		print_test_result "Plugin writes to fixed temp file on bookmark selection" "PASS"
+	else
+		print_test_result "Plugin writes to fixed temp file on bookmark selection" "FAIL" "Interactive mode should write cd command to /tmp/bookmark-cd-\${USER}"
+	fi
+else
+	print_test_result "Plugin writes to fixed temp file on bookmark selection" "SKIP" "mlh-bookmark.sh not found"
+fi
+
 # Cleanup
 cleanup_bookmark_tests

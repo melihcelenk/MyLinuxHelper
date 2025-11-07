@@ -50,13 +50,27 @@ if ! grep -Fq "$BOOKMARK_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
 # This wrapper enables 'cd' functionality by evaluating the output
 bookmark() {
   local cmd="$1"
-  
-  # Special handling for interactive list - must run directly without wrapper interference
+
+  # Special handling for interactive list - use fixed temp file (ranger-style)
   if [ "$cmd" = "list" ] && ( [ "$2" = "-i" ] || [ "$2" = "--interactive" ] ); then
+    # Use fixed temp file path (no arguments, no env vars needed)
+    local tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
+    rm -f "$tmp_cd_file"
+
+    # Run interactive mode - it will write to the fixed path if user selects bookmark
     command bookmark "$@"
-    return $?
+    local exit_code=$?
+
+    # Check if a cd command was written to temp file
+    if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
+      # Execute the cd command
+      source "$tmp_cd_file" 2>/dev/null
+      rm -f "$tmp_cd_file"
+    fi
+
+    return $exit_code
   fi
-  
+
   # For jumping to bookmarks (number or name), eval the output to enable cd
   if [[ "$cmd" =~ ^[0-9]+$ ]] || ( [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ] ); then
     # This might be a bookmark name/number - check if it produces a cd command

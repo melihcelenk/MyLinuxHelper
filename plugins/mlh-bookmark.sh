@@ -827,13 +827,36 @@ interactive_list() {
 			'') # Enter
 				local sel_type="${entry_types[$selected]}"
 				local sel_id="${entry_ids[$selected]}"
-				
-				# Jump to bookmark
-				if [ "$sel_type" = "unnamed" ]; then
-					bash "$0" "$sel_id"
-				else
-					bash "$0" "$sel_id"
+
+				# Clear screen before exiting interactive mode
+				clear 2>/dev/null || printf '\033[2J\033[H' 2>/dev/null || true
+
+				# Jump to bookmark - get the path
+				local bookmark_path
+				bookmark_path=$(jq -r --arg id "$sel_id" '
+					(.bookmarks.unnamed[] | select(.id == ($id | tonumber)) | .path) //
+					(.bookmarks.named[] | select(.name == $id) | .path) //
+					empty
+				' "$BOOKMARK_FILE" 2>/dev/null)
+
+				if [ -z "$bookmark_path" ] || [ "$bookmark_path" = "null" ]; then
+					echo -e "${RED}Error: Bookmark '$sel_id' not found${NC}" >&2
+					return 1
 				fi
+
+				# Check if path exists
+				if [ ! -d "$bookmark_path" ]; then
+					echo -e "${YELLOW}Warning: Path no longer exists: $bookmark_path${NC}" >&2
+					return 1
+				fi
+
+				# Write cd command to fixed temp file (ranger-style)
+				# Wrapper function will check this file and source it
+				local tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
+				echo "cd \"$bookmark_path\"" > "$tmp_cd_file"
+				echo -e "${GREEN}→${NC} $bookmark_path" >&2
+
+				# Exit interactive mode
 				return 0
 				;;
 		'd'|'D') # Delete
