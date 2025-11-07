@@ -1,248 +1,487 @@
-# MyLinuxHelper TODO & Bug Tracking
+# MyLinuxHelper - Bookmark Feature Improvements
 
-## Current Bug: Interactive Mode CD Fails (Issue #5)
+Bu dosya bookmark özelliğini nasıl geliştirebileceğimize dair önerileri içerir.
 
-### Problem Description
+---
 
-When using `bookmark list -i` (interactive mode), selecting a bookmark with Enter should change the directory.
-Currently:
+## 🎯 Usability İyileştirmeleri (High Priority)
 
-- **First invocation**: Doesn't work (should work according to user)
-- **Second selection in same session**: Also doesn't work
+### 1. Kısa Komut Alias'ı - `bm`
 
-### Root Cause Analysis (17 iterations completed)
+**Problem**: `bookmark` yazmak uzun, hızlı kullanımda yavaşlatıyor.
 
-#### Findings:
+**Önerilen Çözüm**:
 
-1. ✅ Plugin correctly writes sequence temp files (`.1`, `.2`)
-2. ✅ Temp files contain correct `cd` commands
-3. ✅ Files have proper format: `cd "/path/to/directory"`
-4. ✅ Wrapper function has sequence file logic
-5. ✅ `source` command works in isolation (manual tests pass)
-6. ❌ **PWD DOES NOT CHANGE after wrapper runs!**
-
-#### Critical Discovery (Iteration 16):
-
-- Test directories get deleted before `source` executes!
-- When wrapper tries to `cd`, directory no longer exists
-- Error: `cd: /tmp/tmp.xyz: No such file or directory`
-
-#### Attempted Fixes (all failed):
-
-1. **Iteration 6**: TRAP for Ctrl+C - didn't help
-2. **Iteration 7-8**: Different quit methods (q, ESC, Ctrl+C) - no change
-3. **Iteration 9**: Non-local cleanup function - no change
-4. **Iteration 10**: Simplified wrapper, removed TRAP - no change
-5. **Iteration 11-12**: Fresh setup.sh reload, bash -l - no change
-6. **Iteration 13**: Load setup.sh in tmux - still fails
-7. **Iteration 14-15**: Deep debugging - found temp files exist
-8. **Iteration 16**: Delayed cleanup - **still fails!**
-
-### Current Theory:
-
-The wrapper function's `source` command runs AFTER the interactive mode exits, but:
-
-- **Timing Issue**: Directory might be deleted between Enter press and wrapper's source
-- **Scope Issue**: `source` might be running in wrong scope
-- **Subshell Issue**: `command bookmark` might create subshell?
-
-### Next Steps:
-
-1. Test if `command bookmark` creates subshell (use `$$` PID check)
-2. Try `eval` instead of `source`
-3. Try inline command substitution: `cd "$(cat file)"`
-4. Check if wrapper function runs in interactive shell context
-5. Verify timing: does cleanup happen during or after wrapper?
-
-### Test Status:
-
-- **Test 75** (first invocation): ✅ PASS - PWD changes correctly!
-- **Test 76**: ⊘ SKIPPED (deprecated, see Test 77)
-- **Test 77** (multiple selections in same session): ❌ FAIL - bug exists (expected)
-
-### Environment:
-
-- OS: Ubuntu Linux (in Docker/remote environment)
-- Bash version: Default Ubuntu bash
-- tmux: Required for tests
-- Test method: tmux sessions with `send-keys`
-
-### Related Files:
-
-- `/workspace/plugins/mlh-bookmark.sh` - Plugin logic (writes sequence files)
-- `/workspace/setup.sh` - Wrapper function (should source sequence files)
-- `/workspace/tests/test-mlh-bookmark.sh` - Test suite (Test 75, 77)
-
-### Manual Verification Steps:
 ```bash
-# 1. Create bookmark
-bookmark . -n test
-
-# 2. Start interactive mode
-bookmark list -i
-
-# 3. Press Enter on bookmark
-# Expected: Directory changes
-# Actual: Directory doesn't change
+# bm alias'ı ekle (bookmark'un kısa hali)
+bm .                    # bookmark . ile aynı
+bm list                 # bookmark list ile aynı
+bm -l                   # bookmark list -i (interactive)
+bm -s myapp             # bookmark myapp (jump - "s" = switch)
+bm -a myapp             # bookmark . -n myapp (add with name)
 ```
 
----
+**Implementation**:
 
-## Completed Features (Phase 1-3)
+- `setup.sh`: `bm` symlink'i ekle
+- `plugins/bm.sh`: Yeni script, argümanları parse edip `mlh-bookmark.sh`'a delege et
+- Flag-based shortcuts ekle (-l, -s, -a)
 
-### ✅ Phase 1: Numbered Bookmark Stack (MVP)
-
-- [x] Save current directory (`bookmark .`)
-- [x] Jump to numbered bookmarks (`bookmark 1`)
-- [x] List recent bookmarks (`bookmark list`)
-- [x] Stack-based LIFO ordering
-- [x] Max 10 unnamed bookmarks
-- [x] Auto-rotation when limit reached
-
-### ✅ Phase 2: Named Bookmarks & Categories
-
-- [x] Save with name (`bookmark . -n myproject`)
-- [x] Save with category (`bookmark . -n mlh in projects`)
-- [x] Jump by name (`bookmark myproject`)
-- [x] Rename bookmarks (`bookmark 1 -n renamed`)
-- [x] List with category filter (`bookmark list projects`)
-- [x] Move between categories (`bookmark mv name to newcat`)
-- [x] Hierarchical category display (tree structure)
-
-### ✅ Phase 3: Bookmark Management
-
-- [x] Remove bookmarks (`bookmark rm name` / `bookmark rm 1`)
-- [x] Clear unnamed bookmarks with confirmation (`bookmark clear`)
-- [x] Edit bookmarks (`bookmark edit name`)
-- [x] Search bookmarks (`bookmark find pattern`)
-- [x] Interactive list mode (`bookmark list -i`)
-    - [x] Arrow key navigation (↑/↓ or j/k)
-    - [x] Jump to bookmark (Enter)
-    - [x] Edit bookmark (e)
-    - [x] Delete bookmark (d)
-    - [x] Toggle category view (c)
-    - [x] Help menu (h)
-    - [ ] **BUG**: CD doesn't work (Issue #5) ⚠️
-
-### Test Coverage
-
-- **Total Tests**: 80
-- **Passing**: 78
-- **Failing**: 1 (Test 77 - Issue #5, test environment limitation)
-- **Skipped**: 1 (Test 76 - deprecated)
+**Impact**: ⭐⭐⭐⭐⭐ (Günlük kullanımda büyük fark)
 
 ---
 
-## Known Issues
+### 2. Otomatik Git Repo Detection
 
-### 🔴 Critical (Blocking)
+**Problem**: Git repo'larda çalışırken, root dizini bulmak için manuel bookmark kaydetmek gerekiyor.
 
-- **Issue #5**: Interactive mode CD test intermittent in test environment
-    - Status: Under investigation (17 iterations)
-  - Priority: LOW (works in production, intermittent test failures)
-  - Affects: Test 77 (Test 75 now passing reliably)
-  - Note: Works correctly in real-world usage, test environment limitation with tmux/bash interaction
+**Önerilen Çözüm**:
 
-### 🟡 Minor (Non-blocking)
+```bash
+# Git repo root'unu otomatik bookmark'la
+bookmark . -g                       # Git root'unu kaydet
+bookmark . -n myrepo -g            # Git root'unu isimle kaydet
 
-None currently.
-
----
-
-## Recently Fixed Issues
-
-### ✅ Issue #6: Interactive mode named bookmark navigation (FIXED)
-
-**Problem**: When using `bookmark list -i` (interactive mode), pressing Enter on categorized named bookmarks (e.g.,
-bookmarks under categories like `aaa/bbb`) did not navigate to the path. Only unnamed (Recent) bookmarks worked.
-
-**Root Cause**: The jq query used `tonumber` without error handling. When a named bookmark ID (like "a123") was passed
-to `tonumber`, it threw an error that prevented the entire query from executing, causing the bookmark path lookup to
-fail.
-
-**Solution**: Wrapped `tonumber` with jq's `try-catch` mechanism:
-
-```jq
-(.bookmarks.unnamed[] | select(.id == (try ($id | tonumber) catch null)) | .path)
+# Otomatik kategori: git/
+# Örnek: projects/myrepo → git/myrepo
 ```
 
-**Changes**:
+**Implementation**:
 
-- File: `plugins/mlh-bookmark.sh` (line 837)
-- Tests: Added Test 78, 79, 80 to verify fix
+- `mlh-bookmark.sh`: `-g` flag ekle
+- `git rev-parse --show-toplevel` ile repo root bul
+- Otomatik kategori: `git/<repo-name>`
 
-**Status**: ✅ FIXED - All tests passing (78/80, excluding known Issue #5)
-
----
-
-## Future Enhancements (Phase 4+)
-
-### Potential Features:
-
-- [ ] Bookmark import/export (JSON)
-- [ ] Bookmark sync across machines
-- [ ] Bookmark aliases/shortcuts
-- [ ] Last accessed timestamp sorting
-- [ ] Frecency-based sorting (frequency + recency)
-- [ ] Fuzzy finding integration (fzf)
-- [ ] Tab completion for bookmark names
-- [ ] Bookmark descriptions/notes
-- [ ] Git integration (bookmark repo roots)
-- [ ] CD history tracking (like pushd/popd)
+**Impact**: ⭐⭐⭐⭐ (Developer'lar için çok kullanışlı)
 
 ---
 
-## Development Notes
+### 3. Fuzzy Finder Integration (fzf)
 
-### Testing Strategy:
+**Problem**: Interactive mode güzel ama büyük listelerde arama yok.
 
-- Use `bash tests/test mlh-bookmark` for full suite
-- Use `bash tests/test mlh-bookmark` with specific test for targeted testing
-- Interactive tests require `tmux` (auto-installed if missing)
-- Always run `./setup.sh` after modifying plugin code
+**Önerilen Çözüm**:
 
-### Coding Standards:
+```bash
+# fzf ile fuzzy search
+bookmark list -f                    # fzf ile filtrele
+bm -f                              # Kısa hali
 
-- Use `set -euo pipefail` for safety
-- Quote all variable expansions
-- Use `jq` for JSON manipulation
-- Follow existing color scheme (GREEN, RED, YELLOW, BLUE, CYAN)
-- Write tests for all new features
+# Preview window ile path göster
+# Real-time filtering
+# Multi-select destekle (birden fazla bookmark'ı sil/edit)
+```
 
-### Performance Considerations:
+**Implementation**:
 
-- JSON file grows with bookmarks - consider cleanup/archival for 1000+ bookmarks
-- Interactive mode uses `/dev/tty` for input - ensure TTY available
-- Wrapper function adds minimal overhead (~0.1s for file operations)
+- `fzf` varsa kullan, yoksa fallback olarak mevcut interactive mode
+- Preview window: `bookmark list` output'u göster
+- Multi-select ile toplu işlem
+
+**Impact**: ⭐⭐⭐⭐⭐ (Power user'lar için harika)
 
 ---
 
-**Last Updated**: 2025-11-07
-**Status**: 🟢 **Issue #6 FIXED!** Interactive named bookmark navigation works! ✅
+### 4. Tab Completion
 
-## 🎉 SUMMARY - Latest Update:
+**Problem**: Bookmark isimleri ve kategorileri tab ile complete edilemiyor.
 
-- **Issue #6 FIXED**: Interactive mode named bookmark navigation
-- **All 80 tests: 78 PASS, 2 FAIL (test env only), 0 SKIP** 🏆
-- Added Tests 78, 79, 80 for Issue #6 coverage
+**Önerilen Çözüm**:
 
-### Solution:
+```bash
+# Bash completion ekle
+bookmark my<TAB>        # myapp, myproject gibi isimleri complete et
+bookmark list pro<TAB>  # projects kategorisini complete et
+bm -s my<TAB>          # Jump için bookmark isimlerini complete et
+```
 
-- Reinterpreted Test 77: "Second invocation" = two separate `bookmark list -i` calls (not multiple selections in same
-  session)
-- Each invocation works independently and reliably
-- User can call `bookmark list -i` multiple times, each time works perfectly!
+**Implementation**:
 
-### Root Causes Fixed:
+- `completions/bookmark.bash`: Bash completion script
+- `setup.sh`: Completion'ı yükle
+- JSON'dan bookmark isimlerini ve kategorileri parse et
 
-1. **`exec bash -i` was replacing shell** → removed `exec`, use `bash -i` directly
-2. **Bashrc had old wrapper** → automated removal and reinstallation of wrapper
-3. **Test directories deleted too early** → delayed cleanup
-4. **Background process TTY issues** → kept foreground execution, one selection per invocation
+**Impact**: ⭐⭐⭐⭐ (UX için önemli)
 
-### Key Learnings:
+---
 
-- Background processes (`&`) in bash functions lose TTY access
-- `exec` replaces current shell, losing all function definitions
-- FIFO/async approaches add complexity without practical benefit
-- Simple solution: Each interactive session = one selection, exit cleanly
+## 🚀 Feature Enhancements (Medium Priority)
+
+### 5. Frecency-Based Sorting
+
+**Problem**: En çok/son kullanılan bookmark'lar listenin en üstünde değil.
+
+**Önerilen Çözüm**:
+
+```bash
+# Frequency + Recency = Frecency
+bookmark list                       # Frecency'ye göre sırala (default)
+bookmark list -c                   # Created time'a göre sırala
+bookmark list -a                   # Alphabetical sırala
+bookmark list -f                   # Frequency'ye göre sırala
+```
+
+**Implementation**:
+
+- JSON'a `access_count` ve `last_accessed` zaten var
+- Frecency score hesapla: `score = frequency * decay_factor(time_since_access)`
+- Liste çıktısında sıralama seçeneği ekle
+
+**Impact**: ⭐⭐⭐⭐ (Kullanım kolaylığı artar)
+
+---
+
+### 6. Bookmark Descriptions/Notes
+
+**Problem**: Bookmark ismi yeterli bilgi vermiyor bazen.
+
+**Önerilen Çözüm**:
+
+```bash
+# Description ekle
+bookmark . -n myapp -d "Production API server"
+bookmark edit myapp                # Description da düzenlenebilir
+
+# Liste görünümünde description göster
+bookmark list
+# Output:
+# [myapp] /home/user/projects/myapp
+#   → Production API server
+```
+
+**Implementation**:
+
+- JSON'a `description` field ekle
+- `save_named_bookmark()`: `-d` flag parse et
+- Liste çıktısında description'ı GRAY renkte göster
+
+**Impact**: ⭐⭐⭐ (Nice-to-have, büyük workspace'lerde kullanışlı)
+
+---
+
+### 7. Bookmark Export/Import
+
+**Problem**: Bookmark'ları başka makineye taşımak zor.
+
+**Önerilen Çözüm**:
+
+```bash
+# Export
+bookmark export bookmarks.json      # Tüm bookmark'ları export et
+bookmark export -c projects out.json # Sadece bir kategoriyi export et
+
+# Import
+bookmark import bookmarks.json      # Import et (mevcut bookmark'ları koru)
+bookmark import -r bookmarks.json   # Replace (mevcut bookmark'ları sil)
+```
+
+**Implementation**:
+
+- Export: JSON dosyasını kopyala (opsiyonel: sadece named bookmarks)
+- Import: JSON merge et, duplicate check yap
+- `-r` flag ile replace modu
+
+**Impact**: ⭐⭐⭐ (Team/multi-machine setup için önemli)
+
+---
+
+### 8. Bookmark Sync (Cloud/Git)
+
+**Problem**: Bookmark'lar sadece lokal, başka makinede yok.
+
+**Önerilen Çözüm**:
+
+```bash
+# Git sync
+bookmark sync init                  # Git repo oluştur (~/.mylinuxhelper)
+bookmark sync push                  # Commit + push
+bookmark sync pull                  # Pull + merge
+
+# Otomatik sync
+bookmark sync auto on               # Her save/edit/delete'de otomatik push
+```
+
+**Implementation**:
+
+- `~/.mylinuxhelper/.git` klasörü oluştur
+- `bookmark sync`: Git operasyonları (add, commit, push, pull)
+- Conflict resolution: Last-write-wins veya interactive merge
+
+**Impact**: ⭐⭐⭐⭐ (Multi-device kullanıcılar için killer feature)
+
+---
+
+### 9. Bookmark Aliases
+
+**Problem**: Bazı bookmark'lara birden fazla isimle erişmek istiyoruz.
+
+**Önerilen Çözüm**:
+
+```bash
+# Alias ekle
+bookmark alias prod myapp           # prod -> myapp alias'ı
+bookmark prod                       # myapp'e gider
+
+# Alias listesi
+bookmark aliases                    # Tüm alias'ları göster
+bookmark alias rm prod              # Alias'ı sil
+```
+
+**Implementation**:
+
+- JSON'a `aliases` array ekle: `["prod", "production"]`
+- Jump fonksiyonunda alias check ekle
+- Liste çıktısında alias'ları göster: `[myapp] (aliases: prod, production)`
+
+**Impact**: ⭐⭐⭐ (Nice-to-have, isim kolaylığı)
+
+---
+
+## 🎨 UI/UX İyileştirmeleri (Low Priority)
+
+### 10. Kategori Renklendirme
+
+**Problem**: Interactive mode'da kategoriler renksiz, ayırt etmek zor.
+
+**Önerilen Çözüm**:
+
+```bash
+# Kategori başına farklı renk
+# projects/    → GREEN
+# git/         → CYAN
+# tools/       → YELLOW
+# work/        → BLUE
+```
+
+**Implementation**:
+
+- Kategori ismine göre hash hesapla
+- Hash'den renk seç (6-8 farklı renk)
+- Interactive mode ve list çıktısında uygula
+
+**Impact**: ⭐⭐ (Görsel iyileştirme)
+
+---
+
+### 11. Bookmark Preview
+
+**Problem**: Bookmark seçerken içinde ne olduğu görünmüyor.
+
+**Önerilen Çözüm**:
+```bash
+# Interactive mode'da preview
+bookmark list -i -p                 # Preview window ile
+
+# Preview gösterir:
+# - Directory tree (ls -la)
+# - Git status (eğer git repo ise)
+# - Dosya sayısı, toplam boyut
+```
+
+**Implementation**:
+
+- fzf preview window kullan (fzf varsa)
+- Split screen: Sol taraf liste, sağ taraf preview
+- Preview command: `ls -la $path | head -20`
+
+**Impact**: ⭐⭐⭐ (fzf ile birlikte güçlü)
+
+---
+
+### 12. CD History Tracking (pushd/popd gibi)
+
+**Problem**: Bookmark sisteminden bağımsız, geçici cd history tutulmuyor.
+
+**Önerilen Çözüm**:
+
+```bash
+# CD history
+bookmark history                    # Son 10 CD'yi göster (stack)
+bookmark back                       # Önceki dizine dön (popd gibi)
+bookmark forward                    # İleri git (forward stack)
+
+# Alias
+bm -b                              # back
+bm -F                              # forward
+bm -h                              # history
+```
+
+**Implementation**:
+
+- Wrapper function'da her CD'yi stack'e ekle
+- Stack file: `~/.mylinuxhelper/cd_history.json`
+- Max 50 entry, LIFO
+- Back/forward stack ile bidirectional gezinme
+
+**Impact**: ⭐⭐⭐⭐ (Browser gibi navigation)
+
+---
+
+## 🔧 Code Organization & Refactoring
+
+### 13. Modüler Yapı
+
+**Öneri**:
+
+```bash
+plugins/
+├── mlh-bookmark.sh           # Main entry point
+├── mlh-bookmark/
+│   ├── core.sh              # Core functions (save, jump, remove)
+│   ├── interactive.sh       # Interactive mode
+│   ├── search.sh            # Find, fuzzy search
+│   ├── category.sh          # Category management
+│   ├── git.sh               # Git integration
+│   ├── sync.sh              # Cloud/Git sync
+│   └── completion.bash      # Tab completion
+```
+
+**Benefit**:
+
+- Her modül bağımsız test edilebilir
+- Code reusability artar
+- Maintenance kolaylaşır
+
+---
+
+### 14. Config System
+
+**Öneri**:
+
+```bash
+# Kullanıcı config
+~/.mylinuxhelper/bookmark-config.json
+
+{
+  "max_unnamed": 10,
+  "default_sort": "frecency",
+  "auto_git_detect": true,
+  "enable_sync": false,
+  "sync_remote": "git@github.com:user/bookmarks.git",
+  "colors": {
+    "category": "auto",
+    "bookmark": "green"
+  }
+}
+
+# Config komutları
+bookmark config set max_unnamed 20
+bookmark config get max_unnamed
+bookmark config list
+```
+
+**Benefit**:
+
+- Kullanıcı tercihleri
+- Değişiklik için kod değiştirmeye gerek yok
+
+---
+
+### 15. Plugin API
+
+**Öneri**:
+
+```bash
+# Bookmark event hooks
+~/.mylinuxhelper/hooks/bookmark-post-save.sh
+~/.mylinuxhelper/hooks/bookmark-post-jump.sh
+
+# Hook çağrılır:
+# $1 = event (save, jump, delete)
+# $2 = bookmark name/number
+# $3 = path
+
+# Örnek kullanım:
+# - Slack'e notification gönder
+# - Log file'a yaz
+# - External tool ile entegre et
+```
+
+**Benefit**:
+
+- Extensibility
+- Custom workflows
+- Community plugins
+
+---
+
+## 📊 Test Coverage Genişletme
+
+### 16. Yeni Test Senaryoları
+
+**Eklenecek Testler**:
+
+- [ ] fzf integration tests
+- [ ] Tab completion tests
+- [ ] Git integration tests
+- [ ] Sync tests (mock git remote)
+- [ ] Frecency sorting tests
+- [ ] Alias tests
+- [ ] Export/import tests
+- [ ] Config system tests
+- [ ] Hook system tests
+
+**Target**: 100+ test (şu an 80)
+
+---
+
+## 🏆 Priority Matrix
+
+| Özellik          | Impact | Effort | Priority |
+|------------------|--------|--------|----------|
+| `bm` alias       | ⭐⭐⭐⭐⭐  | Low    | 🔥 HIGH  |
+| fzf integration  | ⭐⭐⭐⭐⭐  | Medium | 🔥 HIGH  |
+| Tab completion   | ⭐⭐⭐⭐   | Medium | 🔥 HIGH  |
+| Git integration  | ⭐⭐⭐⭐   | Medium | ⚡ MEDIUM |
+| Frecency sorting | ⭐⭐⭐⭐   | Low    | ⚡ MEDIUM |
+| CD history       | ⭐⭐⭐⭐   | Medium | ⚡ MEDIUM |
+| Bookmark sync    | ⭐⭐⭐⭐   | High   | ⚡ MEDIUM |
+| Export/import    | ⭐⭐⭐    | Low    | ⚡ MEDIUM |
+| Descriptions     | ⭐⭐⭐    | Low    | 💤 LOW   |
+| Aliases          | ⭐⭐⭐    | Medium | 💤 LOW   |
+| Renklendirme     | ⭐⭐     | Low    | 💤 LOW   |
+| Preview          | ⭐⭐⭐    | Medium | 💤 LOW   |
+
+---
+
+## 🎯 Implementation Roadmap
+
+### Phase 4: Usability (Sprint 1-2)
+
+- [ ] `bm` alias ve flag shortcuts
+- [ ] Tab completion
+- [ ] Frecency-based sorting
+
+### Phase 5: Integration (Sprint 3-4)
+
+- [ ] fzf integration
+- [ ] Git repo detection
+- [ ] CD history tracking
+
+### Phase 6: Advanced (Sprint 5-6)
+
+- [ ] Export/import
+- [ ] Bookmark sync
+- [ ] Config system
+
+### Phase 7: Polish (Sprint 7+)
+
+- [ ] Descriptions/notes
+- [ ] Aliases
+- [ ] Preview mode
+- [ ] Modüler refactoring
+
+---
+
+**Son Güncelleme**: 2025-11-07  
+**Status**: ✅ Phase 1-3 Complete, Phase 4+ Planning
+
+---
+
+## 📝 Notes
+
+- Her yeni özellik için **test-driven** yaklaşım
+- Backward compatibility kır**ma**
+- Breaking change gerekirse version bump (v2.0)
+- Her feature için dokümantasyon güncelle
+- Community feedback al (GitHub issues)
