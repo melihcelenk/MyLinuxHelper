@@ -817,293 +817,215 @@ fi
 # ============================================================================
 
 # Test 75: Interactive mode cd works on first invocation
-# This test simulates the user pressing Enter in interactive mode
-# It should change directory on first run (this works correctly)
-# Expected: PASS (first invocation works) or FAIL (if cannot test)
+# This test uses tmux to create a real terminal session and test interactive mode
+# Expected: PASS (first invocation works)
 
-# Try to install expect if not available (like jq)
-EXPECT_AVAILABLE=0
-if command -v expect >/dev/null 2>&1; then
-	EXPECT_AVAILABLE=1
+# Check if tmux is available (install if needed)
+TMUX_AVAILABLE=0
+if command -v tmux >/dev/null 2>&1; then
+	TMUX_AVAILABLE=1
 else
-	# Try to install expect if not available
+	# Try to install tmux
 	if [ -f "$ROOT_DIR/install.sh" ]; then
-		bash "$ROOT_DIR/install.sh" expect >/dev/null 2>&1
-		if command -v expect >/dev/null 2>&1; then
-			EXPECT_AVAILABLE=1
+		bash "$ROOT_DIR/install.sh" tmux >/dev/null 2>&1
+		if command -v tmux >/dev/null 2>&1; then
+			TMUX_AVAILABLE=1
 		fi
 	fi
 fi
 
-# Check if we have bookmarks to test with
-if [ -f "$BOOKMARK_FILE" ] && jq -e '.bookmarks.named | length > 0' "$BOOKMARK_FILE" >/dev/null 2>&1; then
-	# Get first bookmark path
-	first_bookmark_path=$(jq -r '.bookmarks.named[0].path' "$BOOKMARK_FILE" 2>/dev/null)
-	first_bookmark_name=$(jq -r '.bookmarks.named[0].name' "$BOOKMARK_FILE" 2>/dev/null)
-	
-	if [ -n "$first_bookmark_path" ] && [ "$first_bookmark_path" != "null" ] && [ -d "$first_bookmark_path" ]; then
-		# Save current directory
-		original_dir=$(pwd)
-		
-		# Create a test directory for this test
-		test_dir=$(mktemp -d 2>/dev/null || echo "/tmp/test-bookmark-$$")
-		cd "$test_dir" || test_dir="$original_dir"
-		
-		# Source the wrapper function if available
-		setup_script="$ROOT_DIR/setup.sh"
-		if [ -f "$setup_script" ]; then
-			# Source the wrapper function
-			# shellcheck source=/dev/null
-			source "$setup_script" 2>/dev/null || true
-			
-			# Test with expect if available
-			if [ "$EXPECT_AVAILABLE" -eq 1 ]; then
-				# Create expect script to simulate interactive mode (first invocation only)
-				expect_script=$(mktemp 2>/dev/null || echo "/tmp/test-expect-$$")
-				cat > "$expect_script" <<'EXPECT_EOF'
-#!/usr/bin/expect -f
-set timeout 10
-spawn bash -c "cd [lindex $argv 0] && bookmark list -i"
-expect {
-	"Select:" { send "\r"; exp_continue }
-	"Jump" { send "\r"; exp_continue }
-	"Quit" { send "q\r"; exp_continue }
-	"bookmark" { send "\r"; exp_continue }
-	-re ".*" { send "\r"; exp_continue }
-	timeout { send "q\r"; exit 1 }
-	eof { exit 0 }
-}
-EXPECT_EOF
-				chmod +x "$expect_script" 2>/dev/null || true
-				
-				# First invocation - should work (this is the correct behavior)
-				first_pwd_before=$(pwd)
-				expect "$expect_script" "$test_dir" >/dev/null 2>&1
-				first_pwd_after=$(pwd)
-				
-				# Cleanup
-				rm -f "$expect_script" 2>/dev/null || true
-				
-				# Check result: first invocation should change directory (this works correctly)
-				if [ "$first_pwd_before" != "$first_pwd_after" ]; then
-					# First invocation works correctly - PASS
-					print_test_result "Interactive mode cd on first invocation" "PASS" "First invocation correctly changes directory: $first_pwd_before -> $first_pwd_after"
-				else
-					# First invocation doesn't work - this would be unexpected
-					print_test_result "Interactive mode cd on first invocation" "FAIL" "First invocation doesn't change directory (unexpected). Before: $first_pwd_before, After: $first_pwd_after"
-				fi
-			else
-				# Expect not available - test wrapper function directly by checking temp file mechanism
-				# Create a test bookmark and test the wrapper function's temp file mechanism
-				test_bookmark_path="$first_bookmark_path"
-				
-				# Test wrapper function by simulating what happens when Enter is pressed
-				# The wrapper function should create a temp file with cd command
-				tmp_cd_file=$(mktemp "/tmp/bookmark-cd-${USER:-$(id -un)}-XXXXXX" 2>/dev/null) || {
-					tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}-test-$$"
-					rm -f "$tmp_cd_file"
-				}
-				
-				# Export temp file path to simulate what wrapper does
-				export MLH_BOOKMARK_CD_FILE="$tmp_cd_file"
-				
-				# Simulate what plugin does: write cd command to temp file
-				printf 'cd "%s"\n' "$test_bookmark_path" > "$tmp_cd_file" 2>/dev/null || true
-				
-				# Test if wrapper function would source this file
-				# We can't actually test interactive mode without expect, but we can test the mechanism
-				if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
-					# Check if file contains correct cd command
-					if grep -q "^cd \"" "$tmp_cd_file" 2>/dev/null; then
-						# Temp file mechanism works - PASS (mechanism is correct)
-						print_test_result "Interactive mode cd on first invocation (temp file mechanism)" "PASS" "Temp file mechanism works correctly. File: $tmp_cd_file, Content: $(cat "$tmp_cd_file" 2>/dev/null | head -1)"
-					else
-						# Temp file mechanism doesn't work - FAIL
-						print_test_result "Interactive mode cd on first invocation (temp file mechanism)" "FAIL" "Temp file mechanism doesn't work. File: $tmp_cd_file, Content: $(cat "$tmp_cd_file" 2>/dev/null | head -1)"
-					fi
-				else
-					# Temp file not created - FAIL
-					print_test_result "Interactive mode cd on first invocation (temp file mechanism)" "FAIL" "Temp file not created: $tmp_cd_file"
-				fi
-				
-				# Cleanup
-				rm -f "$tmp_cd_file" 2>/dev/null || true
-				unset MLH_BOOKMARK_CD_FILE
-			fi
-		else
-			print_test_result "Interactive mode cd on first invocation" "FAIL" "setup.sh not found - cannot test"
-		fi
-		
-		# Return to original directory
-		cd "$original_dir" 2>/dev/null || true
-	else
-		print_test_result "Interactive mode cd on first invocation" "FAIL" "No valid bookmarks found - cannot test"
-	fi
+if [ "$TMUX_AVAILABLE" -eq 0 ]; then
+	print_test_result "Interactive mode cd on first invocation (tmux required)" "SKIP" "tmux not available - install with: apt-get install tmux"
 else
-	print_test_result "Interactive mode cd on first invocation" "FAIL" "No bookmarks found - cannot test"
+	# Create test bookmark file and directory for this test
+	test75_bookmark_file="/tmp/test-bookmark-75-$$"
+	test_bookmark_dir=$(mktemp -d)
+	cd "$test_bookmark_dir" || exit 1
+	
+	# Create bookmark in test file
+	MLH_BOOKMARK_FILE="$test75_bookmark_file" bash "$PLUGIN_SCRIPT" . -n test75bookmark >/dev/null 2>&1
+	
+	# Create a different starting directory
+	start_dir=$(mktemp -d)
+	
+	# Create unique session name
+	session_name="test-bookmark-75-$$"
+	
+	# Kill any existing session with same name
+	tmux kill-session -t "$session_name" 2>/dev/null || true
+	
+	# Create tmux session with bash -i (interactive, loads .bashrc)
+	# Pass environment variable to tmux session
+	tmux new-session -d -s "$session_name" "export MLH_BOOKMARK_FILE='$test75_bookmark_file'; bash -i"
+	sleep 0.5
+	
+	# Send commands to tmux session
+	tmux send-keys -t "$session_name" "cd '$start_dir'" C-m
+	sleep 0.2
+	tmux send-keys -t "$session_name" "pwd > /tmp/pwd-before-75-$$" C-m
+	sleep 0.2
+	
+	# Start interactive bookmark list
+	tmux send-keys -t "$session_name" "bookmark list -i" C-m
+	sleep 0.5
+	
+	# Press Enter to select first bookmark (which should be test75bookmark)
+	tmux send-keys -t "$session_name" "" C-m
+	sleep 0.5
+	
+	# Exit interactive mode
+	tmux send-keys -t "$session_name" "q" C-m
+	sleep 0.2
+	
+	# Get PWD after
+	tmux send-keys -t "$session_name" "pwd > /tmp/pwd-after-75-$$" C-m
+	sleep 0.2
+	
+	# Exit tmux session
+	tmux send-keys -t "$session_name" "exit" C-m
+	sleep 0.2
+	
+	# Kill session
+	tmux kill-session -t "$session_name" 2>/dev/null || true
+	
+	# Compare PWDs
+	pwd_before=$(cat /tmp/pwd-before-75-$$ 2>/dev/null || echo "")
+	pwd_after=$(cat /tmp/pwd-after-75-$$ 2>/dev/null || echo "")
+	
+	# Cleanup
+	rm -f /tmp/pwd-before-75-$$ /tmp/pwd-after-75-$$ "$test75_bookmark_file" 2>/dev/null || true
+	rm -rf "$test_bookmark_dir" "$start_dir" 2>/dev/null || true
+	
+	if [ -n "$pwd_before" ] && [ -n "$pwd_after" ] && [ "$pwd_before" != "$pwd_after" ]; then
+		print_test_result "Interactive mode cd on first invocation" "PASS" "Directory changed: $pwd_before -> $pwd_after"
+	else
+		print_test_result "Interactive mode cd on first invocation" "FAIL" "Directory didn't change. Before: '$pwd_before', After: '$pwd_after'"
+	fi
 fi
 
 # Test 76: Interactive mode cd fails on second invocation (Issue #5)
 # This test demonstrates the bug: second invocation doesn't change directory
 # Expected: FAIL (because the bug exists)
 
-# Try to install expect if not available (like jq)
-EXPECT_AVAILABLE_76=0
-if command -v expect >/dev/null 2>&1; then
-	EXPECT_AVAILABLE_76=1
-else
-	# Try to install expect if not available
-	if [ -f "$ROOT_DIR/install.sh" ]; then
-		bash "$ROOT_DIR/install.sh" expect >/dev/null 2>&1
-		if command -v expect >/dev/null 2>&1; then
-			EXPECT_AVAILABLE_76=1
-		fi
-	fi
-fi
-
-# Check if we have bookmarks to test with
-if [ -f "$BOOKMARK_FILE" ] && jq -e '.bookmarks.named | length > 0' "$BOOKMARK_FILE" >/dev/null 2>&1; then
-	# Get first bookmark path
-	first_bookmark_path=$(jq -r '.bookmarks.named[0].path' "$BOOKMARK_FILE" 2>/dev/null)
-	first_bookmark_name=$(jq -r '.bookmarks.named[0].name' "$BOOKMARK_FILE" 2>/dev/null)
-	
-	if [ -n "$first_bookmark_path" ] && [ "$first_bookmark_path" != "null" ] && [ -d "$first_bookmark_path" ]; then
-		# Save current directory
-		original_dir=$(pwd)
-		
-		# Create a test directory for this test
-		test_dir=$(mktemp -d 2>/dev/null || echo "/tmp/test-bookmark-$$")
-		cd "$test_dir" || test_dir="$original_dir"
-		
-		# This test requires interactive mode simulation which is complex
-		# Expected behavior:
-		# 1. First `bookmark list -i` + Enter → directory changes to bookmark path ✅
-		# 2. Second `bookmark list -i` + Enter → directory does NOT change ❌ (BUG)
-		
-		if [ "$EXPECT_AVAILABLE_76" -eq 1 ]; then
-			# We can test with expect (see Test 77)
-			# This test is documented here but actual testing is in Test 77
-			print_test_result "Interactive mode cd fails on second invocation (Issue #5 - BUG)" "FAIL" "Bug exists: second invocation doesn't change directory. See Test 77 for automated testing with expect"
-		else
-			# Expect not available - mark as FAIL because bug exists but cannot be tested
-			print_test_result "Interactive mode cd fails on second invocation (Issue #5 - BUG)" "FAIL" "Bug exists: second invocation doesn't change directory. Cannot test without expect (install with: apt-get install expect)"
-		fi
-		
-		# Return to original directory
-		cd "$original_dir" 2>/dev/null || true
-	else
-		print_test_result "Interactive mode cd fails on second invocation (Issue #5)" "FAIL" "No valid bookmarks found - cannot test interactive mode bug"
-	fi
-else
-	print_test_result "Interactive mode cd fails on second invocation (Issue #5)" "FAIL" "No bookmarks found - cannot test interactive mode bug"
-fi
+# This test is deprecated - see Test 77 for the actual automated test
+print_test_result "Interactive mode cd fails on second invocation (Issue #5 - see Test 77)" "SKIP" "Use Test 77 for automated testing"
 
 # Test 77: Interactive mode cd bug on second invocation (Issue #5)
-# This test uses expect to simulate Enter key press in interactive mode
+# This test uses tmux to test the bug: second invocation doesn't change directory
 # Expected: FAIL (because the bug exists - second invocation doesn't change directory)
 
-# Try to install expect if not available (like jq)
-EXPECT_AVAILABLE_77=0
-if command -v expect >/dev/null 2>&1; then
-	EXPECT_AVAILABLE_77=1
+# Check if tmux is available
+TMUX_AVAILABLE_77=0
+if command -v tmux >/dev/null 2>&1; then
+	TMUX_AVAILABLE_77=1
 else
-	# Try to install expect if not available
+	# Try to install tmux
 	if [ -f "$ROOT_DIR/install.sh" ]; then
-		bash "$ROOT_DIR/install.sh" expect >/dev/null 2>&1
-		if command -v expect >/dev/null 2>&1; then
-			EXPECT_AVAILABLE_77=1
+		bash "$ROOT_DIR/install.sh" tmux >/dev/null 2>&1
+		if command -v tmux >/dev/null 2>&1; then
+			TMUX_AVAILABLE_77=1
 		fi
 	fi
 fi
 
-if [ "$EXPECT_AVAILABLE_77" -eq 0 ]; then
-	# Mark as FAIL because this is a known bug that needs to be tested
-	# Even without expect, the bug exists and should be marked as FAIL
-	print_test_result "Interactive mode cd bug on second invocation (Issue #5 - expect required)" "FAIL" "expect not installed - install with: apt-get install expect. Bug exists: second invocation doesn't change directory"
+if [ "$TMUX_AVAILABLE_77" -eq 0 ]; then
+	# Mark as FAIL because bug exists even if we can't test it
+	print_test_result "Interactive mode cd bug on second invocation (Issue #5 - tmux required)" "FAIL" "tmux not available - install with: apt-get install tmux. Bug exists: second invocation doesn't change directory"
 else
-	# Check if we have bookmarks to test with
-	if [ -f "$BOOKMARK_FILE" ] && jq -e '.bookmarks.named | length > 0' "$BOOKMARK_FILE" >/dev/null 2>&1; then
-		# Get first bookmark path
-		first_bookmark_path=$(jq -r '.bookmarks.named[0].path' "$BOOKMARK_FILE" 2>/dev/null)
-		first_bookmark_name=$(jq -r '.bookmarks.named[0].name' "$BOOKMARK_FILE" 2>/dev/null)
-		
-		if [ -n "$first_bookmark_path" ] && [ "$first_bookmark_path" != "null" ] && [ -d "$first_bookmark_path" ]; then
-			# Save current directory
-			original_dir=$(pwd)
-			
-			# Create a test directory for this test
-			test_dir=$(mktemp -d 2>/dev/null || echo "/tmp/test-bookmark-$$")
-			cd "$test_dir" || test_dir="$original_dir"
-			
-			# Source the wrapper function if available
-			setup_script="$ROOT_DIR/setup.sh"
-			if [ -f "$setup_script" ]; then
-				# Source the wrapper function
-				# shellcheck source=/dev/null
-				source "$setup_script" 2>/dev/null || true
-				
-				# Create expect script to simulate interactive mode
-				expect_script=$(mktemp 2>/dev/null || echo "/tmp/test-expect-$$")
-				cat > "$expect_script" <<'EXPECT_EOF'
-#!/usr/bin/expect -f
-set timeout 10
-spawn bash -c "cd [lindex $argv 0] && bookmark list -i"
-expect {
-	"Select:" { send "\r"; exp_continue }
-	"Jump" { send "\r"; exp_continue }
-	"Quit" { send "q\r"; exp_continue }
-	"bookmark" { send "\r"; exp_continue }
-	-re ".*" { send "\r"; exp_continue }
-	timeout { send "q\r"; exit 1 }
-	eof { exit 0 }
-}
-EXPECT_EOF
-				chmod +x "$expect_script" 2>/dev/null || true
-				
-				# First invocation - should work
-				first_pwd_before=$(pwd)
-				expect "$expect_script" "$test_dir" >/dev/null 2>&1
-				first_pwd_after=$(pwd)
-				
-				# Wait a bit for cleanup
-				sleep 0.5
-				
-				# Second invocation - should fail (BUG)
-				second_pwd_before=$(pwd)
-				expect "$expect_script" "$test_dir" >/dev/null 2>&1
-				second_pwd_after=$(pwd)
-				
-				# Cleanup
-				rm -f "$expect_script" 2>/dev/null || true
-				
-				# Check results
-				# First invocation: directory should change
-				if [ "$first_pwd_before" != "$first_pwd_after" ]; then
-					first_works=true
-				else
-					first_works=false
-				fi
-				
-				# Second invocation: directory should NOT change (BUG)
-				# This is the bug - second invocation doesn't change directory
-				if [ "$second_pwd_before" = "$second_pwd_after" ]; then
-					# This is the expected bug behavior - test should FAIL
-					print_test_result "Interactive mode cd bug on second invocation (Issue #5 - BUG CONFIRMED)" "FAIL" "Second invocation doesn't change directory (BUG). First: $first_pwd_before -> $first_pwd_after, Second: $second_pwd_before -> $second_pwd_after"
-				else
-					# If second invocation works, bug is fixed
-					print_test_result "Interactive mode cd bug on second invocation (Issue #5 - BUG FIXED)" "PASS" "Second invocation changes directory correctly"
-				fi
-			else
-				print_test_result "Interactive mode cd bug on second invocation (Issue #5)" "FAIL" "setup.sh not found - cannot test interactive mode bug"
-			fi
-			
-			# Return to original directory
-			cd "$original_dir" 2>/dev/null || true
-		else
-			print_test_result "Interactive mode cd bug on second invocation (Issue #5)" "FAIL" "No valid bookmarks found - cannot test interactive mode bug"
-		fi
+	# Create test bookmark file and directories for this test
+	test77_bookmark_file="/tmp/test-bookmark-77-$$"
+	test_bookmark_dir1_77=$(mktemp -d)
+	test_bookmark_dir2_77=$(mktemp -d)
+	
+	# Create TWO bookmarks for this test (to select twice in same session)
+	cd "$test_bookmark_dir1_77" || exit 1
+	MLH_BOOKMARK_FILE="$test77_bookmark_file" bash "$PLUGIN_SCRIPT" . -n bm1_77 >/dev/null 2>&1
+	cd "$test_bookmark_dir2_77" || exit 1
+	MLH_BOOKMARK_FILE="$test77_bookmark_file" bash "$PLUGIN_SCRIPT" . -n bm2_77 >/dev/null 2>&1
+	
+	# Create a different starting directory
+	start_dir_77=$(mktemp -d)
+	
+	# Create unique session name
+	session_name_77="test-bookmark-77-$$"
+	
+	# Kill any existing session with same name
+	tmux kill-session -t "$session_name_77" 2>/dev/null || true
+	
+	# Create tmux session with bash -i (interactive, loads .bashrc)
+	# Pass environment variable to tmux session
+	tmux new-session -d -s "$session_name_77" "export MLH_BOOKMARK_FILE='$test77_bookmark_file'; bash -i"
+	sleep 0.5
+	
+	# === TEST: SAME INTERACTIVE SESSION - TWO ENTERS (BUG) ===
+	# Start from a known directory
+	tmux send-keys -t "$session_name_77" "cd '$start_dir_77'" C-m
+	sleep 0.2
+	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-start-77-$$" C-m
+	sleep 0.2
+	
+	# Start interactive bookmark list (ONLY ONCE)
+	tmux send-keys -t "$session_name_77" "bookmark list -i" C-m
+	sleep 0.8
+	
+	# FIRST Enter - select first bookmark (should work)
+	tmux send-keys -t "$session_name_77" "" C-m
+	sleep 0.8
+	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-first-77-$$" C-m
+	sleep 0.3
+	
+	# SECOND Enter - select second bookmark (BUG: doesn't work)
+	# Still in same interactive session, navigate to next bookmark
+	tmux send-keys -t "$session_name_77" "Down" C-m  # Navigate down
+	sleep 0.5
+	tmux send-keys -t "$session_name_77" "" C-m  # Select second bookmark
+	sleep 0.8
+	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-second-77-$$" C-m
+	sleep 0.3
+	
+	# Exit interactive mode
+	tmux send-keys -t "$session_name_77" "q" C-m
+	sleep 0.2
+	
+	# Exit tmux session
+	tmux send-keys -t "$session_name_77" "exit" C-m
+	sleep 0.2
+	
+	# Kill session
+	tmux kill-session -t "$session_name_77" 2>/dev/null || true
+	
+	# Read PWDs
+	pwd_start=$(cat /tmp/pwd-start-77-$$ 2>/dev/null || echo "")
+	pwd_first=$(cat /tmp/pwd-first-77-$$ 2>/dev/null || echo "")
+	pwd_second=$(cat /tmp/pwd-second-77-$$ 2>/dev/null || echo "")
+	
+	# Cleanup
+	rm -f /tmp/pwd-start-77-$$ /tmp/pwd-first-77-$$ /tmp/pwd-second-77-$$ 2>/dev/null || true
+	rm -f "$test77_bookmark_file" 2>/dev/null || true
+	rm -rf "$test_bookmark_dir1_77" "$test_bookmark_dir2_77" "$start_dir_77" 2>/dev/null || true
+	
+	# Check if first Enter worked (within same interactive session)
+	first_worked="no"
+	if [ -n "$pwd_start" ] && [ -n "$pwd_first" ] && [ "$pwd_start" != "$pwd_first" ]; then
+		first_worked="yes"
+	fi
+	
+	# Check if second Enter worked (BUG: it shouldn't - within SAME session)
+	second_worked="no"
+	if [ -n "$pwd_first" ] && [ -n "$pwd_second" ] && [ "$pwd_first" != "$pwd_second" ]; then
+		second_worked="yes"
+	fi
+	
+	# Test result logic:
+	# - If second Enter DOESN'T work → test FAILS (bug confirmed)
+	# - If second Enter WORKS → test PASSES (bug fixed!)
+	
+	if [ "$second_worked" = "no" ]; then
+		# BUG CONFIRMED - second Enter in same session doesn't work
+		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG CONFIRMED)" "FAIL" "Second Enter doesn't change directory (BUG EXISTS). Start: $pwd_start, After 1st Enter: $pwd_first, After 2nd Enter: $pwd_second"
 	else
-		print_test_result "Interactive mode cd bug on second invocation (Issue #5)" "FAIL" "No bookmarks found - cannot test interactive mode bug"
+		# BUG FIXED - second Enter works!
+		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG FIXED)" "PASS" "Second Enter changes directory correctly! Start: $pwd_start -> 1st: $pwd_first -> 2nd: $pwd_second"
 	fi
 fi
 
