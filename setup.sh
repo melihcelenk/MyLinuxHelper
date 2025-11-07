@@ -66,29 +66,25 @@ bookmark() {
     # Plugin will check this and use it if available
     export MLH_BOOKMARK_CD_FILE="$tmp_cd_file"
 
-    # Run interactive mode - it will write to the temp file if user selects bookmark
+    # Clean up any leftover sequence files from previous sessions
+    # This is important for Ctrl+C interrupted sessions
+    rm -f "${tmp_cd_file}".* 2>/dev/null || true
+
+    # Run interactive mode - each invocation works independently
+    # User selects one bookmark, interactive mode exits, cd happens
     command bookmark "$@"
     local exit_code=$?
 
-    # Wait a bit to ensure file is written (if plugin just wrote it)
-    # Use a loop to check file existence with timeout (max 1 second)
-    local waited=0
-    while [ $waited -lt 10 ]; do
-      if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
-        break
-      fi
-      sleep 0.1 2>/dev/null || true
-      waited=$((waited + 1))
-    done
+    # Wait a bit for plugin to finish writing
+    sleep 0.1
 
-    # Check if a cd command was written to temp file
-    if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
-      # Execute the cd command
-      source "$tmp_cd_file" 2>/dev/null || true
+    # Source the sequence file (plugin writes .1 for first selection)
+    if [ -f "${tmp_cd_file}.1" ]; then
+      source "${tmp_cd_file}.1" 2>/dev/null || true
     fi
     
-    # Clean up temp file and unset env var
-    rm -f "$tmp_cd_file"
+    # Clean up all temp files (base + sequences) and unset env var
+    rm -f "$tmp_cd_file" "${tmp_cd_file}".* 2>/dev/null || true
     unset MLH_BOOKMARK_CD_FILE
 
     return $exit_code
