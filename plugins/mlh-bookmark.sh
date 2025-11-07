@@ -850,10 +850,50 @@ interactive_list() {
 					return 1
 				fi
 
-				# Write cd command to fixed temp file (ranger-style)
+				# Write cd command to temp file (ranger-style)
 				# Wrapper function will check this file and source it
-				local tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
-				echo "cd \"$bookmark_path\"" > "$tmp_cd_file"
+				# Use environment variable if set (unique temp file per invocation)
+				# Otherwise fall back to fixed path (for backward compatibility)
+				local tmp_cd_file="${MLH_BOOKMARK_CD_FILE:-/tmp/bookmark-cd-${USER:-$(id -un)}}"
+				
+				# Ensure temp file directory exists and is writable
+				local tmp_dir
+				tmp_dir=$(dirname "$tmp_cd_file")
+				if [ ! -d "$tmp_dir" ] || [ ! -w "$tmp_dir" ]; then
+					echo -e "${RED}Error: Temp directory not writable: $tmp_dir${NC}" >&2
+					return 1
+				fi
+				
+				# Write cd command to temp file (use printf for better reliability)
+				# Use atomic write: write to temp file first, then move to final location
+				local tmp_write_file="${tmp_cd_file}.tmp"
+				printf 'cd "%s"\n' "$bookmark_path" > "$tmp_write_file" 2>/dev/null || {
+					echo -e "${RED}Error: Failed to write temp file${NC}" >&2
+					return 1
+				}
+				
+				# Atomically move to final location
+				mv "$tmp_write_file" "$tmp_cd_file" 2>/dev/null || {
+					echo -e "${RED}Error: Failed to move temp file${NC}" >&2
+					rm -f "$tmp_write_file" 2>/dev/null || true
+					return 1
+				}
+				
+				# Verify file was written and has content
+				if [ ! -f "$tmp_cd_file" ] || [ ! -s "$tmp_cd_file" ]; then
+					echo -e "${RED}Error: Temp file not created or empty${NC}" >&2
+					return 1
+				fi
+				
+				# Ensure file is readable
+				if [ ! -r "$tmp_cd_file" ]; then
+					echo -e "${RED}Error: Temp file not readable${NC}" >&2
+					return 1
+				fi
+				
+				# Sync to ensure file is written to disk
+				sync 2>/dev/null || true
+				
 				echo -e "${GREEN}→${NC} $bookmark_path" >&2
 
 				# Exit interactive mode

@@ -51,22 +51,45 @@ if ! grep -Fq "$BOOKMARK_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
 bookmark() {
   local cmd="$1"
 
-  # Special handling for interactive list - use fixed temp file (ranger-style)
+  # Special handling for interactive list - use unique temp file per invocation
   if [ "$cmd" = "list" ] && ( [ "$2" = "-i" ] || [ "$2" = "--interactive" ] ); then
-    # Use fixed temp file path (no arguments, no env vars needed)
-    local tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
-    rm -f "$tmp_cd_file"
+    # Use unique temp file per invocation (more reliable than fixed path)
+    # This ensures no race conditions between multiple invocations
+    local tmp_cd_file
+    tmp_cd_file=$(mktemp "/tmp/bookmark-cd-${USER:-$(id -un)}-XXXXXX" 2>/dev/null) || {
+      # Fallback to fixed path if mktemp fails
+      tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
+      rm -f "$tmp_cd_file"
+    }
+    
+    # Export temp file path to plugin via environment variable
+    # Plugin will check this and use it if available
+    export MLH_BOOKMARK_CD_FILE="$tmp_cd_file"
 
-    # Run interactive mode - it will write to the fixed path if user selects bookmark
+    # Run interactive mode - it will write to the temp file if user selects bookmark
     command bookmark "$@"
     local exit_code=$?
+
+    # Wait a bit to ensure file is written (if plugin just wrote it)
+    # Use a loop to check file existence with timeout (max 1 second)
+    local waited=0
+    while [ $waited -lt 10 ]; do
+      if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
+        break
+      fi
+      sleep 0.1 2>/dev/null || true
+      waited=$((waited + 1))
+    done
 
     # Check if a cd command was written to temp file
     if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
       # Execute the cd command
-      source "$tmp_cd_file" 2>/dev/null
-      rm -f "$tmp_cd_file"
+      source "$tmp_cd_file" 2>/dev/null || true
     fi
+    
+    # Clean up temp file and unset env var
+    rm -f "$tmp_cd_file"
+    unset MLH_BOOKMARK_CD_FILE
 
     return $exit_code
   fi

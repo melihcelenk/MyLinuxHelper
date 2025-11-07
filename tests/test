@@ -102,6 +102,9 @@ print_summary() {
 			if [ "$suite_failed" -gt 0 ]; then
 				status_indicator=" ${RED}[FAILURE]${NC}"
 				color="$RED"
+			elif [ "$suite_skipped" -gt 0 ]; then
+				status_indicator=" ${YELLOW}[SKIPPED]${NC}"
+				color="$YELLOW"
 			else
 				status_indicator=" ${GREEN}[OK]${NC}"
 				color="$GREEN"
@@ -111,6 +114,8 @@ print_summary() {
 			printf "  %-25s" "$suite_name:"
 			if [ "$suite_failed" -gt 0 ]; then
 				echo -e "${RED}$suite_passed/$suite_total passed${NC}$status_indicator"
+			elif [ "$suite_skipped" -gt 0 ]; then
+				echo -e "${YELLOW}$suite_passed/$suite_total passed${NC}$status_indicator"
 			else
 				echo -e "${GREEN}$suite_passed/$suite_total passed${NC}$status_indicator"
 			fi

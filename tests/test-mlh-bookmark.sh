@@ -765,45 +765,233 @@ else
 fi
 
 # Test 73: Wrapper function handles interactive mode cd (ranger-style fixed temp file)
-# The wrapper function should use fixed temp file path to communicate cd commands from interactive mode
+# Test 73: Wrapper function uses unique temp file per invocation with environment variable
+# The wrapper should use mktemp to create unique temp files and export MLH_BOOKMARK_CD_FILE
 setup_script="$ROOT_DIR/setup.sh"
 if [ -f "$setup_script" ]; then
 	# Extract the wrapper function from setup.sh
 	wrapper_content=$(sed -n '/# MyLinuxHelper - bookmark wrapper function/,/^}/p' "$setup_script" 2>/dev/null)
 
-	# Check if interactive mode handling uses fixed temp file (ranger-style)
+	# Check if interactive mode handling uses unique temp file with environment variable
 	# The fix should:
-	# 1. Use fixed path: tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
-	# 2. Clean temp file: rm -f "$tmp_cd_file"
+	# 1. Use mktemp to create unique temp file: tmp_cd_file=$(mktemp ...)
+	# 2. Export environment variable: export MLH_BOOKMARK_CD_FILE="$tmp_cd_file"
 	# 3. Run command directly: command bookmark "$@" (not captured)
-	# 4. Source the temp file if exists: source "$tmp_cd_file"
+	# 4. Poll for file existence: while loop checking if file exists
+	# 5. Source the temp file if exists: source "$tmp_cd_file"
+	# 6. Clean up: rm -f "$tmp_cd_file" and unset MLH_BOOKMARK_CD_FILE
 
-	if echo "$wrapper_content" | grep -A 15 'interactive' | grep -q '/tmp/bookmark-cd-' && \
-	   echo "$wrapper_content" | grep -A 15 'interactive' | grep -q 'rm -f.*tmp_cd_file' && \
-	   echo "$wrapper_content" | grep -A 15 'interactive' | grep -q 'source.*tmp_cd_file'; then
-		print_test_result "Wrapper function uses ranger-style fixed temp file for cd" "PASS"
+	if echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'mktemp' && \
+	   echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'MLH_BOOKMARK_CD_FILE' && \
+	   echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'export.*MLH_BOOKMARK_CD_FILE' && \
+	   echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'source.*tmp_cd_file'; then
+		print_test_result "Wrapper function uses unique temp file with environment variable for cd" "PASS"
 	else
-		print_test_result "Wrapper function uses ranger-style fixed temp file for cd" "FAIL" "Interactive mode should use fixed temp file path"
+		print_test_result "Wrapper function uses unique temp file with environment variable for cd" "FAIL" "Interactive mode should use mktemp and export MLH_BOOKMARK_CD_FILE"
 	fi
 else
-	print_test_result "Wrapper function uses ranger-style fixed temp file for cd" "SKIP" "setup.sh not found"
+	print_test_result "Wrapper function uses unique temp file with environment variable for cd" "SKIP" "setup.sh not found"
 fi
 
-# Test 74: Plugin code writes to fixed temp file in interactive mode
-# Check that the Enter key handler in interactive mode writes to the ranger-style temp file
+# Test 74: Plugin code uses environment variable for temp file in interactive mode
+# Check that the Enter key handler in interactive mode uses MLH_BOOKMARK_CD_FILE if available
 plugin_file="$ROOT_DIR/plugins/mlh-bookmark.sh"
 if [ -f "$plugin_file" ]; then
-	# Check for the fixed temp file usage in interactive Enter handler
-	# Should contain: tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
-	# Should contain: echo "cd \"$bookmark_path\"" > "$tmp_cd_file"
-	if grep -A 5 "# Write cd command to fixed temp file" "$plugin_file" | grep -q '/tmp/bookmark-cd-' && \
-	   grep -A 5 "# Write cd command to fixed temp file" "$plugin_file" | grep -q 'echo "cd'; then
-		print_test_result "Plugin writes to fixed temp file on bookmark selection" "PASS"
+	# Check for the environment variable usage in interactive Enter handler
+	# Should contain: tmp_cd_file="${MLH_BOOKMARK_CD_FILE:-/tmp/bookmark-cd-${USER:-$(id -un)}}"
+	# Should contain: printf 'cd "%s"\n' "$bookmark_path" > "$tmp_cd_file"
+	# Should contain: atomic write with mv (tmp file then move)
+	if grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'MLH_BOOKMARK_CD_FILE' && \
+	   grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'printf.*cd' && \
+	   grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'mv.*tmp_cd_file'; then
+		print_test_result "Plugin uses environment variable for temp file on bookmark selection" "PASS"
 	else
-		print_test_result "Plugin writes to fixed temp file on bookmark selection" "FAIL" "Interactive mode should write cd command to /tmp/bookmark-cd-\${USER}"
+		print_test_result "Plugin uses environment variable for temp file on bookmark selection" "FAIL" "Interactive mode should use MLH_BOOKMARK_CD_FILE env var and atomic write"
 	fi
 else
-	print_test_result "Plugin writes to fixed temp file on bookmark selection" "SKIP" "mlh-bookmark.sh not found"
+	print_test_result "Plugin uses environment variable for temp file on bookmark selection" "SKIP" "mlh-bookmark.sh not found"
+fi
+
+# ============================================================================
+# INTERACTIVE MODE CD TEST - Issue #5: Second invocation fails
+# ============================================================================
+
+# Test 75: Interactive mode cd works on first invocation
+# This test simulates the user pressing Enter in interactive mode
+# It should change directory on first run
+
+# Check if we have bookmarks to test with
+if [ -f "$BOOKMARK_FILE" ] && jq -e '.bookmarks.named | length > 0' "$BOOKMARK_FILE" >/dev/null 2>&1; then
+	# Get first bookmark path
+	first_bookmark_path=$(jq -r '.bookmarks.named[0].path' "$BOOKMARK_FILE" 2>/dev/null)
+	first_bookmark_name=$(jq -r '.bookmarks.named[0].name' "$BOOKMARK_FILE" 2>/dev/null)
+	
+	if [ -n "$first_bookmark_path" ] && [ "$first_bookmark_path" != "null" ] && [ -d "$first_bookmark_path" ]; then
+		# Save current directory
+		original_dir=$(pwd)
+		
+		# Create a test directory for this test
+		test_dir=$(mktemp -d 2>/dev/null || echo "/tmp/test-bookmark-$$")
+		cd "$test_dir" || test_dir="$original_dir"
+		
+		# Test: First invocation - should work
+		# We can't easily simulate Enter key press, so we'll test the wrapper function directly
+		# by checking if the temp file mechanism works
+		
+		# Source the wrapper function if available
+		setup_script="$ROOT_DIR/setup.sh"
+		if [ -f "$setup_script" ]; then
+			# Extract and source the wrapper function
+			wrapper_func=$(sed -n '/^bookmark() {/,/^}$/p' "$setup_script" 2>/dev/null | head -100)
+			
+			# This test requires interactive mode simulation which is complex
+			# Mark as FAIL because this is a known bug that needs to be tested
+			print_test_result "Interactive mode cd on first invocation (Issue #5 - requires expect)" "FAIL" "Interactive mode test requires expect-based automation. Bug exists: second invocation doesn't change directory"
+		else
+			print_test_result "Interactive mode cd on first invocation (Issue #5)" "FAIL" "setup.sh not found - cannot test interactive mode bug"
+		fi
+		
+		# Return to original directory
+		cd "$original_dir" 2>/dev/null || true
+	else
+		print_test_result "Interactive mode cd on first invocation (Issue #5)" "FAIL" "No valid bookmarks found - cannot test interactive mode bug"
+	fi
+else
+	print_test_result "Interactive mode cd on first invocation (Issue #5)" "FAIL" "No bookmarks found - cannot test interactive mode bug"
+fi
+
+# Test 76: Interactive mode cd fails on second invocation (Issue #5)
+# This test demonstrates the bug: second invocation doesn't change directory
+# Expected: FAIL (because the bug exists)
+
+# Check if we have bookmarks to test with
+if [ -f "$BOOKMARK_FILE" ] && jq -e '.bookmarks.named | length > 0' "$BOOKMARK_FILE" >/dev/null 2>&1; then
+	# Get first bookmark path
+	first_bookmark_path=$(jq -r '.bookmarks.named[0].path' "$BOOKMARK_FILE" 2>/dev/null)
+	first_bookmark_name=$(jq -r '.bookmarks.named[0].name' "$BOOKMARK_FILE" 2>/dev/null)
+	
+	if [ -n "$first_bookmark_path" ] && [ "$first_bookmark_path" != "null" ] && [ -d "$first_bookmark_path" ]; then
+		# Save current directory
+		original_dir=$(pwd)
+		
+		# Create a test directory for this test
+		test_dir=$(mktemp -d 2>/dev/null || echo "/tmp/test-bookmark-$$")
+		cd "$test_dir" || test_dir="$original_dir"
+		
+		# This test requires interactive mode simulation which is complex
+		# We'll document the expected behavior instead
+		# Expected behavior:
+		# 1. First `bookmark list -i` + Enter → directory changes to bookmark path ✅
+		# 2. Second `bookmark list -i` + Enter → directory does NOT change ❌ (BUG)
+		
+		# For automated testing, we would need:
+		# - expect-based automation to simulate Enter key press
+		# - Or a way to inject input into /dev/tty
+		# - Or a test mode in the plugin that bypasses interactive input
+		
+		# Mark as FAIL because this is a known bug that needs to be tested
+		print_test_result "Interactive mode cd fails on second invocation (Issue #5 - BUG)" "FAIL" "Requires interactive mode simulation (expect or manual testing). Known bug: second invocation doesn't change directory"
+	else
+		print_test_result "Interactive mode cd fails on second invocation (Issue #5)" "FAIL" "No valid bookmarks found - cannot test interactive mode bug"
+	fi
+else
+	print_test_result "Interactive mode cd fails on second invocation (Issue #5)" "FAIL" "No bookmarks found - cannot test interactive mode bug"
+fi
+
+# Test 77: Interactive mode cd bug on second invocation (Issue #5)
+# This test uses expect to simulate Enter key press in interactive mode
+# Expected: FAIL (because the bug exists - second invocation doesn't change directory)
+
+# Check if expect is available
+if ! command -v expect >/dev/null 2>&1; then
+	# Mark as FAIL because this is a known bug that needs to be tested
+	# Even without expect, the bug exists and should be marked as FAIL
+	print_test_result "Interactive mode cd bug on second invocation (Issue #5 - expect required)" "FAIL" "expect not installed - install with: apt-get install expect. Bug exists: second invocation doesn't change directory"
+else
+	# Check if we have bookmarks to test with
+	if [ -f "$BOOKMARK_FILE" ] && jq -e '.bookmarks.named | length > 0' "$BOOKMARK_FILE" >/dev/null 2>&1; then
+		# Get first bookmark path
+		first_bookmark_path=$(jq -r '.bookmarks.named[0].path' "$BOOKMARK_FILE" 2>/dev/null)
+		first_bookmark_name=$(jq -r '.bookmarks.named[0].name' "$BOOKMARK_FILE" 2>/dev/null)
+		
+		if [ -n "$first_bookmark_path" ] && [ "$first_bookmark_path" != "null" ] && [ -d "$first_bookmark_path" ]; then
+			# Save current directory
+			original_dir=$(pwd)
+			
+			# Create a test directory for this test
+			test_dir=$(mktemp -d 2>/dev/null || echo "/tmp/test-bookmark-$$")
+			cd "$test_dir" || test_dir="$original_dir"
+			
+			# Source the wrapper function if available
+			setup_script="$ROOT_DIR/setup.sh"
+			if [ -f "$setup_script" ]; then
+				# Source the wrapper function
+				# shellcheck source=/dev/null
+				source "$setup_script" 2>/dev/null || true
+				
+				# Create expect script to simulate interactive mode
+				expect_script=$(mktemp 2>/dev/null || echo "/tmp/test-expect-$$")
+				cat > "$expect_script" <<'EXPECT_EOF'
+#!/usr/bin/expect -f
+set timeout 10
+spawn bash -c "cd [lindex $argv 0] && bookmark list -i"
+expect {
+	"Select:" { send "\r"; exp_continue }
+	"Jump" { send "\r"; exp_continue }
+	"Quit" { send "q\r"; exp_continue }
+	"bookmark" { send "\r"; exp_continue }
+	-re ".*" { send "\r"; exp_continue }
+	timeout { send "q\r"; exit 1 }
+	eof { exit 0 }
+}
+EXPECT_EOF
+				chmod +x "$expect_script" 2>/dev/null || true
+				
+				# First invocation - should work
+				first_pwd_before=$(pwd)
+				expect "$expect_script" "$test_dir" >/dev/null 2>&1
+				first_pwd_after=$(pwd)
+				
+				# Wait a bit for cleanup
+				sleep 0.5
+				
+				# Second invocation - should fail (BUG)
+				second_pwd_before=$(pwd)
+				expect "$expect_script" "$test_dir" >/dev/null 2>&1
+				second_pwd_after=$(pwd)
+				
+				# Cleanup
+				rm -f "$expect_script" 2>/dev/null || true
+				
+				# Check results
+				# First invocation: directory should change
+				if [ "$first_pwd_before" != "$first_pwd_after" ]; then
+					first_works=true
+				else
+					first_works=false
+				fi
+				
+				# Second invocation: directory should NOT change (BUG)
+				# This is the bug - second invocation doesn't change directory
+				if [ "$second_pwd_before" = "$second_pwd_after" ]; then
+					# This is the expected bug behavior - test should FAIL
+					print_test_result "Interactive mode cd bug on second invocation (Issue #5 - BUG CONFIRMED)" "FAIL" "Second invocation doesn't change directory (BUG). First: $first_pwd_before -> $first_pwd_after, Second: $second_pwd_before -> $second_pwd_after"
+				else
+					# If second invocation works, bug is fixed
+					print_test_result "Interactive mode cd bug on second invocation (Issue #5 - BUG FIXED)" "PASS" "Second invocation changes directory correctly"
+				fi
+			else
+				print_test_result "Interactive mode cd bug on second invocation (Issue #5)" "FAIL" "setup.sh not found - cannot test interactive mode bug"
+			fi
+			
+			# Return to original directory
+			cd "$original_dir" 2>/dev/null || true
+		else
+			print_test_result "Interactive mode cd bug on second invocation (Issue #5)" "FAIL" "No valid bookmarks found - cannot test interactive mode bug"
+		fi
+	else
+		print_test_result "Interactive mode cd bug on second invocation (Issue #5)" "FAIL" "No bookmarks found - cannot test interactive mode bug"
+	fi
 fi
 
 # Cleanup
