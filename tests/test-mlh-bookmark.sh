@@ -1039,5 +1039,56 @@ else
 	fi
 fi
 
+# ============================================================================
+# BUG FIX: Categorized bookmark navigation in interactive mode (Issue #6)
+# ============================================================================
+
+# Test 78: Named bookmark with category can be jumped to (non-interactive)
+cd "$TEST_DIR_1" || exit 1
+rm -f "$TEST_BOOKMARK_FILE" # Reset
+bash "$PLUGIN_SCRIPT" . -n testcat1 in cat1/cat2 >/dev/null 2>&1
+result=$(bash "$PLUGIN_SCRIPT" testcat1 2>&1)
+if echo "$result" | grep -q "$TEST_DIR_1"; then
+	print_test_result "Jump to categorized named bookmark (non-interactive)" "PASS"
+else
+	print_test_result "Jump to categorized named bookmark (non-interactive)" "FAIL" "Expected $TEST_DIR_1 in output, got: $result"
+fi
+
+# Test 79: Interactive mode - jq query handles named bookmarks correctly
+# This tests the jq query used in interactive mode
+cd "$TEST_DIR_1" || exit 1
+rm -f "$TEST_BOOKMARK_FILE" # Reset
+bash "$PLUGIN_SCRIPT" . -n a123 in aaa/bbb >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . -n mesela in cart/curt >/dev/null 2>&1
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1 # Unnamed bookmark
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1 # Another unnamed
+
+# Test the jq query that's used in interactive mode for named bookmarks
+named_path=$(jq -r --arg id "a123" '
+	(.bookmarks.unnamed[] | select(.id == (try ($id | tonumber) catch null)) | .path) //
+	(.bookmarks.named[] | select(.name == $id) | .path) //
+	empty
+' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+
+if [ "$named_path" = "$TEST_DIR_1" ]; then
+	print_test_result "Interactive mode jq query finds named bookmark" "PASS"
+else
+	print_test_result "Interactive mode jq query finds named bookmark" "FAIL" "Expected: $TEST_DIR_1, Got: '$named_path'"
+fi
+
+# Test 80: Interactive mode jq query doesn't fail on named bookmark strings
+# When tonumber fails, the query should still work
+unnamed_path=$(jq -r --arg id "1" '
+	(.bookmarks.unnamed[] | select(.id == (try ($id | tonumber) catch null)) | .path) //
+	(.bookmarks.named[] | select(.name == $id) | .path) //
+	empty
+' "$TEST_BOOKMARK_FILE" 2>/dev/null)
+
+if [ -n "$unnamed_path" ] && [ "$unnamed_path" != "null" ]; then
+	print_test_result "Interactive mode jq query finds unnamed bookmark" "PASS"
+else
+	print_test_result "Interactive mode jq query finds unnamed bookmark" "FAIL" "Got empty or null path"
+fi
+
 # Cleanup
 cleanup_bookmark_tests

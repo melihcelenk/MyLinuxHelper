@@ -831,13 +831,13 @@ interactive_list() {
 				# Clear screen before exiting interactive mode
 				clear 2>/dev/null || printf '\033[2J\033[H' 2>/dev/null || true
 
-				# Jump to bookmark - get the path
-				local bookmark_path
-				bookmark_path=$(jq -r --arg id "$sel_id" '
-					(.bookmarks.unnamed[] | select(.id == ($id | tonumber)) | .path) //
-					(.bookmarks.named[] | select(.name == $id) | .path) //
-					empty
-				' "$BOOKMARK_FILE" 2>/dev/null)
+			# Jump to bookmark - get the path
+			local bookmark_path
+			bookmark_path=$(jq -r --arg id "$sel_id" '
+				(.bookmarks.unnamed[] | select(.id == (try ($id | tonumber) catch null)) | .path) //
+				(.bookmarks.named[] | select(.name == $id) | .path) //
+				empty
+			' "$BOOKMARK_FILE" 2>/dev/null)
 
 				if [ -z "$bookmark_path" ] || [ "$bookmark_path" = "null" ]; then
 					echo -e "${RED}Error: Bookmark '$sel_id' not found${NC}" >&2
