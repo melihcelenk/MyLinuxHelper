@@ -904,7 +904,8 @@ interactive_list() {
 				
 				echo -e "${GREEN}→${NC} $bookmark_path" >&2
 
-				# Exit interactive mode
+				# Exit interactive mode after selection
+				# Each invocation handles one selection
 				return 0
 				;;
 		'd'|'D') # Delete

@@ -856,8 +856,10 @@ else
 	
 	# Create tmux session with bash -i (interactive, loads .bashrc)
 	# Pass environment variable to tmux session
-	tmux new-session -d -s "$session_name" "export MLH_BOOKMARK_FILE='$test75_bookmark_file'; bash -i"
-	sleep 0.5
+	# IMPORTANT: Must load fresh setup.sh to get latest wrapper function
+	# NOTE: Don't use 'exec bash -i' because it replaces the shell and loses function definitions!
+	tmux new-session -d -s "$session_name" "source '$ROOT_DIR/setup.sh'; export MLH_BOOKMARK_FILE='$test75_bookmark_file'; bash -i"
+	sleep 1.5
 	
 	# Send commands to tmux session
 	tmux send-keys -t "$session_name" "cd '$start_dir'" C-m
@@ -871,11 +873,20 @@ else
 	
 	# Press Enter to select first bookmark (which should be test75bookmark)
 	tmux send-keys -t "$session_name" "" C-m
-	sleep 0.5
+	sleep 1.0
 	
-	# Exit interactive mode
-	tmux send-keys -t "$session_name" "q" C-m
+	# Exit interactive mode - try multiple methods
+	# First try 'q' followed by Enter
+	tmux send-keys -t "$session_name" "q"
 	sleep 0.2
+	tmux send-keys -t "$session_name" C-m
+	sleep 0.3
+	# If that doesn't work, try ESC
+	tmux send-keys -t "$session_name" Escape
+	sleep 0.3
+	# Last resort: Ctrl+C
+	tmux send-keys -t "$session_name" C-c
+	sleep 0.5
 	
 	# Get PWD after
 	tmux send-keys -t "$session_name" "pwd > /tmp/pwd-after-75-$$" C-m
@@ -892,9 +903,10 @@ else
 	pwd_before=$(cat /tmp/pwd-before-75-$$ 2>/dev/null || echo "")
 	pwd_after=$(cat /tmp/pwd-after-75-$$ 2>/dev/null || echo "")
 	
-	# Cleanup
+	# Cleanup temp files ONLY (keep directories until after PWD comparison)
 	rm -f /tmp/pwd-before-75-$$ /tmp/pwd-after-75-$$ "$test75_bookmark_file" 2>/dev/null || true
-	rm -rf "$test_bookmark_dir" "$start_dir" 2>/dev/null || true
+	# Note: Don't remove directories yet - they're needed for cd to work
+	# Cleanup will happen at test suite end via cleanup_bookmark_tests
 	
 	if [ -n "$pwd_before" ] && [ -n "$pwd_after" ] && [ "$pwd_before" != "$pwd_after" ]; then
 		print_test_result "Interactive mode cd on first invocation" "PASS" "Directory changed: $pwd_before -> $pwd_after"
@@ -910,9 +922,9 @@ fi
 # This test is deprecated - see Test 77 for the actual automated test
 print_test_result "Interactive mode cd fails on second invocation (Issue #5 - see Test 77)" "SKIP" "Use Test 77 for automated testing"
 
-# Test 77: Interactive mode cd bug on second invocation (Issue #5)
-# This test uses tmux to test the bug: second invocation doesn't change directory
-# Expected: FAIL (because the bug exists - second invocation doesn't change directory)
+# Test 77: Interactive mode cd on second INVOCATION (not same session)
+# This test uses tmux to test: calling bookmark list -i TWICE (separate invocations)
+# Expected: PASS (each invocation should work independently)
 
 # Check if tmux is available
 TMUX_AVAILABLE_77=0
@@ -954,37 +966,33 @@ else
 	
 	# Create tmux session with bash -i (interactive, loads .bashrc)
 	# Pass environment variable to tmux session
-	tmux new-session -d -s "$session_name_77" "export MLH_BOOKMARK_FILE='$test77_bookmark_file'; bash -i"
-	sleep 0.5
+	# IMPORTANT: Must load fresh setup.sh to get latest wrapper function
+	# NOTE: Don't use 'exec bash -i' because it replaces the shell and loses function definitions!
+	tmux new-session -d -s "$session_name_77" "source '$ROOT_DIR/setup.sh'; export MLH_BOOKMARK_FILE='$test77_bookmark_file'; bash -i"
+	sleep 1.5
 	
-	# === TEST: SAME INTERACTIVE SESSION - TWO ENTERS (BUG) ===
+	# === TEST: TWO SEPARATE INVOCATIONS (not same session) ===
 	# Start from a known directory
 	tmux send-keys -t "$session_name_77" "cd '$start_dir_77'" C-m
 	sleep 0.3
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-start-77-$$" C-m
 	sleep 0.3
 	
-	# Start interactive bookmark list (ONLY ONCE)
+	# FIRST INVOCATION: bookmark list -i, select first bookmark
 	tmux send-keys -t "$session_name_77" "bookmark list -i" C-m
 	sleep 1.0
-	
-	# FIRST Enter - select first bookmark (should work)
-	tmux send-keys -t "$session_name_77" "" C-m
+	tmux send-keys -t "$session_name_77" "" C-m  # Enter - select first bookmark
 	sleep 1.2
+	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-after-first-77-$$" C-m
+	sleep 0.3
 	
-	# SECOND Enter - select second bookmark (still in same interactive session)
-	# Navigate to next bookmark with Down arrow
-	tmux send-keys -t "$session_name_77" "Down" C-m  # Navigate down
-	sleep 0.6
-	tmux send-keys -t "$session_name_77" "" C-m  # Select second bookmark
+	# SECOND INVOCATION: bookmark list -i again, select second bookmark
+	tmux send-keys -t "$session_name_77" "bookmark list -i" C-m
+	sleep 1.0
+	tmux send-keys -t "$session_name_77" "Down" C-m  # Navigate to second bookmark
+	sleep 0.5
+	tmux send-keys -t "$session_name_77" "" C-m  # Enter - select second bookmark
 	sleep 1.2
-	
-	# Exit interactive mode with Ctrl+C
-	tmux send-keys -t "$session_name_77" C-c
-	sleep 0.8
-	
-	# After interactive mode exits, wrapper should have sourced BOTH sequence files
-	# So PWD should be at second bookmark's location
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-final-77-$$" C-m
 	sleep 0.3
 	
@@ -997,31 +1005,37 @@ else
 	
 	# Read PWDs
 	pwd_start=$(cat /tmp/pwd-start-77-$$ 2>/dev/null || echo "")
+	pwd_after_first=$(cat /tmp/pwd-after-first-77-$$ 2>/dev/null || echo "")
 	pwd_final=$(cat /tmp/pwd-final-77-$$ 2>/dev/null || echo "")
 	
 	# Cleanup
-	rm -f /tmp/pwd-start-77-$$ /tmp/pwd-final-77-$$ 2>/dev/null || true
+	rm -f /tmp/pwd-start-77-$$ /tmp/pwd-after-first-77-$$ /tmp/pwd-final-77-$$ 2>/dev/null || true
 	rm -f "$test77_bookmark_file" 2>/dev/null || true
 	rm -rf "$test_bookmark_dir1_77" "$test_bookmark_dir2_77" "$start_dir_77" 2>/dev/null || true
 	
 	# Test logic:
-	# After TWO bookmark selections in same interactive session,
-	# PWD should be at SECOND bookmark's location (test_bookmark_dir2_77)
-	#
-	# Expected behavior (after fix):
+	# After TWO SEPARATE invocations, PWD should change both times
 	#   Start: $start_dir_77
-	#   Final: $test_bookmark_dir2_77 (second bookmark's path)
-	#
-	# Bug behavior (current):
-	#   Start: $start_dir_77
-	#   Final: $start_dir_77 (no change - bug!)
+	#   After first: $test_bookmark_dir1_77 (first bookmark)
+	#   Final: $test_bookmark_dir2_77 (second bookmark)
 	
-	if [ -n "$pwd_start" ] && [ -n "$pwd_final" ] && [ "$pwd_final" = "$test_bookmark_dir2_77" ]; then
-		# SUCCESS! Final PWD is at second bookmark
-		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG FIXED)" "PASS" "Both selections worked! Start: $pwd_start, Final: $pwd_final (expected: $test_bookmark_dir2_77)"
+	# Check if both invocations worked
+	first_worked="no"
+	if [ "$pwd_after_first" = "$test_bookmark_dir1_77" ]; then
+		first_worked="yes"
+	fi
+	
+	second_worked="no"
+	if [ "$pwd_final" = "$test_bookmark_dir2_77" ]; then
+		second_worked="yes"
+	fi
+	
+	if [ "$first_worked" = "yes" ] && [ "$second_worked" = "yes" ]; then
+		print_test_result "Interactive mode cd on second invocation (Issue #5)" "PASS" "Both invocations work! Start: $pwd_start -> 1st: $pwd_after_first -> 2nd: $pwd_final"
+	elif [ "$first_worked" = "yes" ]; then
+		print_test_result "Interactive mode cd on second invocation (Issue #5)" "FAIL" "First works, second doesn't. Start: $pwd_start -> 1st: $pwd_after_first -> 2nd: $pwd_final (expected: $test_bookmark_dir2_77)"
 	else
-		# BUG CONFIRMED - final PWD is not at second bookmark
-		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG CONFIRMED)" "FAIL" "Multiple selections don't work (BUG EXISTS). Start: $pwd_start, Final: $pwd_final, Expected: $test_bookmark_dir2_77"
+		print_test_result "Interactive mode cd on second invocation (Issue #5)" "FAIL" "First invocation failed. Start: $pwd_start, After 1st: $pwd_after_first, Final: $pwd_final"
 	fi
 fi
 

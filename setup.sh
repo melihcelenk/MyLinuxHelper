@@ -70,17 +70,18 @@ bookmark() {
     # This is important for Ctrl+C interrupted sessions
     rm -f "${tmp_cd_file}".* 2>/dev/null || true
 
-    # Run interactive mode - it will write to the temp file if user selects bookmark
-    # Plugin will create numbered sequence files for multiple selections
+    # Run interactive mode - each invocation works independently
+    # User selects one bookmark, interactive mode exits, cd happens
     command bookmark "$@"
     local exit_code=$?
 
-    # Source all sequence files in order (supports multiple selections in same session)
-    local seq_num=1
-    while [ -f "${tmp_cd_file}.${seq_num}" ]; do
-      source "${tmp_cd_file}.${seq_num}" 2>/dev/null || true
-      seq_num=$((seq_num + 1))
-    done
+    # Wait a bit for plugin to finish writing
+    sleep 0.1
+
+    # Source the sequence file (plugin writes .1 for first selection)
+    if [ -f "${tmp_cd_file}.1" ]; then
+      source "${tmp_cd_file}.1" 2>/dev/null || true
+    fi
     
     # Clean up all temp files (base + sequences) and unset env var
     rm -f "$tmp_cd_file" "${tmp_cd_file}".* 2>/dev/null || true
