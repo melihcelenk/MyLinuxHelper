@@ -864,29 +864,37 @@ interactive_list() {
 					return 1
 				fi
 				
+				# Support multiple selections in same session: append sequence number
+				# Count existing sequence files to generate next number
+				local sequence_num=1
+				while [ -f "${tmp_cd_file}.${sequence_num}" ]; do
+					sequence_num=$((sequence_num + 1))
+				done
+				local tmp_cd_file_seq="${tmp_cd_file}.${sequence_num}"
+				
 				# Write cd command to temp file (use printf for better reliability)
 				# Use atomic write: write to temp file first, then move to final location
-				local tmp_write_file="${tmp_cd_file}.tmp"
+				local tmp_write_file="${tmp_cd_file_seq}.tmp"
 				printf 'cd "%s"\n' "$bookmark_path" > "$tmp_write_file" 2>/dev/null || {
 					echo -e "${RED}Error: Failed to write temp file${NC}" >&2
 					return 1
 				}
 				
 				# Atomically move to final location
-				mv "$tmp_write_file" "$tmp_cd_file" 2>/dev/null || {
+				mv "$tmp_write_file" "$tmp_cd_file_seq" 2>/dev/null || {
 					echo -e "${RED}Error: Failed to move temp file${NC}" >&2
 					rm -f "$tmp_write_file" 2>/dev/null || true
 					return 1
 				}
 				
 				# Verify file was written and has content
-				if [ ! -f "$tmp_cd_file" ] || [ ! -s "$tmp_cd_file" ]; then
+				if [ ! -f "$tmp_cd_file_seq" ] || [ ! -s "$tmp_cd_file_seq" ]; then
 					echo -e "${RED}Error: Temp file not created or empty${NC}" >&2
 					return 1
 				fi
 				
 				# Ensure file is readable
-				if [ ! -r "$tmp_cd_file" ]; then
+				if [ ! -r "$tmp_cd_file_seq" ]; then
 					echo -e "${RED}Error: Temp file not readable${NC}" >&2
 					return 1
 				fi

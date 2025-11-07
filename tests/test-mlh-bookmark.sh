@@ -960,32 +960,33 @@ else
 	# === TEST: SAME INTERACTIVE SESSION - TWO ENTERS (BUG) ===
 	# Start from a known directory
 	tmux send-keys -t "$session_name_77" "cd '$start_dir_77'" C-m
-	sleep 0.2
+	sleep 0.3
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-start-77-$$" C-m
-	sleep 0.2
+	sleep 0.3
 	
 	# Start interactive bookmark list (ONLY ONCE)
 	tmux send-keys -t "$session_name_77" "bookmark list -i" C-m
-	sleep 0.8
+	sleep 1.0
 	
 	# FIRST Enter - select first bookmark (should work)
 	tmux send-keys -t "$session_name_77" "" C-m
-	sleep 0.8
-	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-first-77-$$" C-m
-	sleep 0.3
+	sleep 1.2
 	
-	# SECOND Enter - select second bookmark (BUG: doesn't work)
-	# Still in same interactive session, navigate to next bookmark
+	# SECOND Enter - select second bookmark (still in same interactive session)
+	# Navigate to next bookmark with Down arrow
 	tmux send-keys -t "$session_name_77" "Down" C-m  # Navigate down
-	sleep 0.5
+	sleep 0.6
 	tmux send-keys -t "$session_name_77" "" C-m  # Select second bookmark
-	sleep 0.8
-	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-second-77-$$" C-m
-	sleep 0.3
+	sleep 1.2
 	
-	# Exit interactive mode
-	tmux send-keys -t "$session_name_77" "q" C-m
-	sleep 0.2
+	# Exit interactive mode with Ctrl+C
+	tmux send-keys -t "$session_name_77" C-c
+	sleep 0.8
+	
+	# After interactive mode exits, wrapper should have sourced BOTH sequence files
+	# So PWD should be at second bookmark's location
+	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-final-77-$$" C-m
+	sleep 0.3
 	
 	# Exit tmux session
 	tmux send-keys -t "$session_name_77" "exit" C-m
@@ -996,36 +997,31 @@ else
 	
 	# Read PWDs
 	pwd_start=$(cat /tmp/pwd-start-77-$$ 2>/dev/null || echo "")
-	pwd_first=$(cat /tmp/pwd-first-77-$$ 2>/dev/null || echo "")
-	pwd_second=$(cat /tmp/pwd-second-77-$$ 2>/dev/null || echo "")
+	pwd_final=$(cat /tmp/pwd-final-77-$$ 2>/dev/null || echo "")
 	
 	# Cleanup
-	rm -f /tmp/pwd-start-77-$$ /tmp/pwd-first-77-$$ /tmp/pwd-second-77-$$ 2>/dev/null || true
+	rm -f /tmp/pwd-start-77-$$ /tmp/pwd-final-77-$$ 2>/dev/null || true
 	rm -f "$test77_bookmark_file" 2>/dev/null || true
 	rm -rf "$test_bookmark_dir1_77" "$test_bookmark_dir2_77" "$start_dir_77" 2>/dev/null || true
 	
-	# Check if first Enter worked (within same interactive session)
-	first_worked="no"
-	if [ -n "$pwd_start" ] && [ -n "$pwd_first" ] && [ "$pwd_start" != "$pwd_first" ]; then
-		first_worked="yes"
-	fi
+	# Test logic:
+	# After TWO bookmark selections in same interactive session,
+	# PWD should be at SECOND bookmark's location (test_bookmark_dir2_77)
+	#
+	# Expected behavior (after fix):
+	#   Start: $start_dir_77
+	#   Final: $test_bookmark_dir2_77 (second bookmark's path)
+	#
+	# Bug behavior (current):
+	#   Start: $start_dir_77
+	#   Final: $start_dir_77 (no change - bug!)
 	
-	# Check if second Enter worked (BUG: it shouldn't - within SAME session)
-	second_worked="no"
-	if [ -n "$pwd_first" ] && [ -n "$pwd_second" ] && [ "$pwd_first" != "$pwd_second" ]; then
-		second_worked="yes"
-	fi
-	
-	# Test result logic:
-	# - If second Enter DOESN'T work → test FAILS (bug confirmed)
-	# - If second Enter WORKS → test PASSES (bug fixed!)
-	
-	if [ "$second_worked" = "no" ]; then
-		# BUG CONFIRMED - second Enter in same session doesn't work
-		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG CONFIRMED)" "FAIL" "Second Enter doesn't change directory (BUG EXISTS). Start: $pwd_start, After 1st Enter: $pwd_first, After 2nd Enter: $pwd_second"
+	if [ -n "$pwd_start" ] && [ -n "$pwd_final" ] && [ "$pwd_final" = "$test_bookmark_dir2_77" ]; then
+		# SUCCESS! Final PWD is at second bookmark
+		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG FIXED)" "PASS" "Both selections worked! Start: $pwd_start, Final: $pwd_final (expected: $test_bookmark_dir2_77)"
 	else
-		# BUG FIXED - second Enter works!
-		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG FIXED)" "PASS" "Second Enter changes directory correctly! Start: $pwd_start -> 1st: $pwd_first -> 2nd: $pwd_second"
+		# BUG CONFIRMED - final PWD is not at second bookmark
+		print_test_result "Interactive mode cd bug on second Enter in same session (Issue #5 - BUG CONFIRMED)" "FAIL" "Multiple selections don't work (BUG EXISTS). Start: $pwd_start, Final: $pwd_final, Expected: $test_bookmark_dir2_77"
 	fi
 fi
 
