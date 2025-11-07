@@ -81,6 +81,22 @@ echo "=== Testing relative time for 3m ==="
 seconds_3m=$(parse_relative_time "3m")
 echo "3m = $seconds_3m seconds (expected: 180)"
 
+# Test parse_relative_time function
+if [ "$seconds_3m" -eq 180 ]; then
+	print_test_result "parse_relative_time('3m') returns correct value" "PASS"
+else
+	print_test_result "parse_relative_time('3m') returns correct value" "FAIL" "Expected 180, got $seconds_3m"
+fi
+
+# Test timestamp_to_date function
+test_ts=$current_ts
+test_date=$(timestamp_to_date "$test_ts")
+if [ -n "$test_date" ] && [[ "$test_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2} ]]; then
+	print_test_result "timestamp_to_date() produces valid date format" "PASS"
+else
+	print_test_result "timestamp_to_date() produces valid date format" "FAIL" "Invalid date format: $test_date"
+fi
+
 end_ts=$current_ts
 start_ts=$((end_ts - seconds_3m))
 echo "Start timestamp: $start_ts ($(timestamp_to_date "$start_ts"))"
@@ -96,3 +112,54 @@ if [ -n "$last_ts" ]; then
 		echo "  last_ts <= end_ts: $last_ts <= $end_ts = $([ "$last_ts" -le "$end_ts" ] && echo "true" || echo "false")"
 	fi
 fi
+
+echo ""
+echo "=== Testing with controlled timestamps ==="
+
+# Test 3: Create test data with known timestamps and verify time filtering
+test_histfile=$(mktemp)
+test_current=$current_ts
+test_5m_ago=$((test_current - 300))  # 5 minutes ago
+test_1h_ago=$((test_current - 3600)) # 1 hour ago
+
+cat >"$test_histfile" <<EOF
+#$test_1h_ago
+command from 1 hour ago
+#$test_5m_ago
+command from 5 minutes ago
+#$test_current
+recent command
+EOF
+
+# Save original HISTFILE and use test file
+original_histfile="${HISTFILE:-}"
+export HISTFILE="$test_histfile"
+
+# Test that parse_history_with_timestamps can read the test file
+test_output=$(parse_history_with_timestamps 2>&1)
+if echo "$test_output" | grep -q "command from 1 hour ago" && \
+   echo "$test_output" | grep -q "command from 5 minutes ago" && \
+   echo "$test_output" | grep -q "recent command"; then
+	print_test_result "parse_history_with_timestamps reads all commands" "PASS"
+else
+	print_test_result "parse_history_with_timestamps reads all commands" "FAIL" "Failed to parse test history file"
+fi
+
+# Test filter_by_date with 10 minute window (should get 2 commands)
+filter_output=$(filter_by_date "10m" 2>&1)
+# Should get at least 2 commands from our test data: 5m ago and current
+# (1h ago command is outside the 10m window)
+if echo "$filter_output" | grep -q "command from 5 minutes ago" && \
+   echo "$filter_output" | grep -q "recent command"; then
+	print_test_result "filter_by_date correctly filters by time range" "PASS"
+else
+	print_test_result "filter_by_date correctly filters by time range" "FAIL" "Could not find expected commands in 10m range"
+fi
+
+# Restore original HISTFILE
+if [ -n "$original_histfile" ]; then
+	export HISTFILE="$original_histfile"
+else
+	unset HISTFILE
+fi
+rm -f "$test_histfile"

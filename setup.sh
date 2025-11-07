@@ -41,6 +41,60 @@ EOF
 	echo "Added mlh wrapper function to ~/.bashrc"
 fi
 
+# 1c) Add bookmark wrapper function for cd functionality
+BOOKMARK_WRAPPER_MARKER="# MyLinuxHelper - bookmark wrapper function"
+if ! grep -Fq "$BOOKMARK_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
+	cat >>"$BASHRC" <<'EOF'
+
+# MyLinuxHelper - bookmark wrapper function
+# This wrapper enables 'cd' functionality by evaluating the output
+bookmark() {
+  local cmd="$1"
+
+  # Special handling for interactive list - use fixed temp file (ranger-style)
+  if [ "$cmd" = "list" ] && ( [ "$2" = "-i" ] || [ "$2" = "--interactive" ] ); then
+    # Use fixed temp file path (no arguments, no env vars needed)
+    local tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
+    rm -f "$tmp_cd_file"
+
+    # Run interactive mode - it will write to the fixed path if user selects bookmark
+    command bookmark "$@"
+    local exit_code=$?
+
+    # Check if a cd command was written to temp file
+    if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
+      # Execute the cd command
+      source "$tmp_cd_file" 2>/dev/null
+      rm -f "$tmp_cd_file"
+    fi
+
+    return $exit_code
+  fi
+
+  # For jumping to bookmarks (number or name), eval the output to enable cd
+  if [[ "$cmd" =~ ^[0-9]+$ ]] || ( [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ] ); then
+    # This might be a bookmark name/number - check if it produces a cd command
+    local output
+    output=$(command bookmark "$@" 2>&1)
+    if echo "$output" | grep -q "^cd "; then
+      # Extract and execute the cd command
+      eval "$(echo "$output" | grep "^cd ")"
+      # Show the rest of the output (without the cd line)
+      echo "$output" | grep -v "^cd " >&2
+    else
+      # Not a jump command, just show the output
+      echo "$output"
+      return $?
+    fi
+  else
+    # For other commands (save, list, mv, help), just pass through
+    command bookmark "$@"
+  fi
+}
+EOF
+	echo "Added bookmark wrapper function to ~/.bashrc"
+fi
+
 # 2) Make scripts executable
 echo "Granting execute permission to all plugin scripts..."
 find "$PLUGINS_DIR" -type f -name "*.sh" -exec chmod +x {} \;
@@ -48,6 +102,7 @@ chmod +x "$ROOT_DIR/install.sh"
 
 # 3) Create/refresh symlinks in ~/.local/bin
 declare -A LINKS=(
+	["$LOCAL_BIN/bookmark"]="$PLUGINS_DIR/mlh-bookmark.sh"
 	["$LOCAL_BIN/i"]="$ROOT_DIR/install.sh"
 	["$LOCAL_BIN/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
 	["$LOCAL_BIN/ll"]="$PLUGINS_DIR/ll.sh"
@@ -67,6 +122,7 @@ done
 if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; then
 	echo "Linking into /usr/local/bin (requested via MLH_INSTALL_USR_LOCAL=1)..."
 	declare -A ULINKS=(
+		["/usr/local/bin/bookmark"]="$PLUGINS_DIR/mlh-bookmark.sh"
 		["/usr/local/bin/i"]="$ROOT_DIR/install.sh"
 		["/usr/local/bin/isjsonvalid"]="$PLUGINS_DIR/isjsonvalid.sh"
 		["/usr/local/bin/ll"]="$PLUGINS_DIR/ll.sh"

@@ -49,12 +49,7 @@ die() {
 	exit 1
 }
 
-# Check if docker is available
-if ! command -v docker >/dev/null 2>&1; then
-	die "Docker is not installed or not in PATH"
-fi
-
-# Parse command
+# Parse command (check for help BEFORE checking docker availability)
 if [ $# -eq 0 ]; then
 	print_help
 	exit 1
@@ -69,6 +64,11 @@ case "$COMMAND" in
 	exit 0
 	;;
 in)
+	# Check if docker is available (only for actual commands)
+	if ! command -v docker >/dev/null 2>&1; then
+		die "Docker is not installed or not in PATH"
+	fi
+
 	# Enter container by pattern
 	if [ $# -eq 0 ]; then
 		die "Missing container name pattern. Usage: mlh docker in <pattern>"

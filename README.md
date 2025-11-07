@@ -5,6 +5,7 @@ A lightweight and modular collection of utility tools to simplify your Linux exp
 ## Features
 
 - **Interactive Command Menu**: Browse and explore all commands with the `mlh` interactive menu
+- **Quick Directory Bookmarks**: Save and jump to frequently used directories with the `bookmark` command
 - **Smart Docker Management**: Quickly enter running containers by name pattern with `mlh docker in`
 - **Enhanced Command History**: View command history with dates, search commands, and filter by date range using `mlh history`
 - **Fast File Search**: Find files quickly in current directory and subdirectories with the `search` command
@@ -25,9 +26,9 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/melihcelenk/MyLinuxHelpe
 
 ## 🚀 Usage
 
-### Available Commands
+---
 
-#### `mlh` - Interactive Command Menu
+### 📋 `mlh` - Interactive Command Menu
 Browse all available commands interactively:
 ```bash
 # Show interactive menu
@@ -55,7 +56,9 @@ MyLinuxHelper - Available Commands
 Select [1-5, q]:
 ```
 
-#### `mlh docker in` - Smart Container Access
+---
+
+### 🐳 `mlh docker in` - Smart Container Access
 Enter running Docker containers by name pattern:
 ```bash
 # Enter container by name
@@ -71,7 +74,78 @@ mlh docker in web
 # Select container [1-3]: 1
 ```
 
-#### `linux` - Container Management
+---
+
+### 🔖 `bookmark` - Quick Directory Bookmarks
+
+Save and jump to frequently used directories instantly:
+
+```bash
+# Save current directory (numbered bookmark)
+bookmark .
+
+# Jump to bookmark 1 (most recent)
+bookmark 1
+
+# Save with a memorable name
+bookmark . -n myproject
+
+# Jump to named bookmark
+bookmark myproject
+
+# Save with category for organization
+bookmark . -n mlh in projects/linux
+bookmark . -n api in projects/java
+
+# List all bookmarks (grouped by category)
+bookmark list
+
+# Interactive list with arrow key navigation
+bookmark list -i
+
+# List specific category
+bookmark list projects
+
+# Move bookmark to different category
+bookmark mv mlh to tools
+
+# Show last 5 numbered bookmarks
+bookmark list 5
+
+# Rename numbered bookmark
+bookmark 1 -n webapp
+
+# Edit bookmark (name/path/category)
+bookmark edit mlh
+
+# Remove bookmark
+bookmark rm oldproject
+bookmark rm 3
+
+# Search bookmarks
+bookmark find java
+
+# Clear all numbered bookmarks
+bookmark clear
+```
+
+**Key Features:**
+
+- **Stack-based numbered bookmarks**: Quick access to last 10 directories (auto-rotating, auto re-numbering)
+- **Named bookmarks**: Save important locations with memorable names
+- **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Interactive menu**: Navigate with arrow keys, edit, delete, search in real-time (`bookmark list -i`)
+- **Category filtering**: List bookmarks by category
+- **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
+- **Path validation**: Warns when bookmark path no longer exists
+- **Name conflict detection**: Prevents conflicts with system commands
+- **Bookmark management**: Edit, remove, clear bookmarks easily
+- **Instant navigation**: Jump to bookmarks without typing full paths
+- **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
+
+---
+
+### 📦 `linux` - Container Management
 Launch and manage isolated Linux containers quickly:
 ```bash
 # Create ephemeral container (auto-removed on exit)
@@ -93,7 +167,9 @@ linux -i debian:12 mycontainer
 linux -m "$PWD:/workspace" -p mycontainer
 ```
 
-#### `mlh history` - Enhanced Command History
+---
+
+### 📜 `mlh history` - Enhanced Command History
 View command history with dates, search, and filtering:
 ```bash
 # Show last 100 commands (default)
@@ -139,7 +215,9 @@ mlh history -c
 - **Helpful messages**: When no results found, shows latest command timestamp with suggestions
 - **Non-intrusive**: Doesn't affect the system `history` command
 
-#### `i` - Smart Package Installer
+---
+
+### 📥 `i` - Smart Package Installer
 Automatically detects your package manager (apt, yum, dnf, etc.) and installs packages:
 ```bash
 # Install a package
@@ -152,7 +230,9 @@ i git curl wget
 i --help
 ```
 
-#### `mlh json` / `isjsonvalid` - JSON Operations
+---
+
+### 🔍 `mlh json` / `isjsonvalid` - JSON Operations
 Advanced JSON validation and fuzzy search with intelligent path navigation:
 ```bash
 # Quick validation (Yes/No output)
@@ -196,7 +276,10 @@ mlh json --help
 - Interactive menu for multiple matches
 - Auto-installs `jq` if needed
 
-#### `ll` - Enhanced Directory Listing
+---
+
+### 📁 `ll` - Enhanced Directory Listing
+
 Shortcut for `ls -la` to view detailed file information:
 ```bash
 # List current directory
@@ -209,7 +292,10 @@ ll /var/log
 ll *.json
 ```
 
-#### `search` - Fast File Search
+---
+
+### 🔎 `search` - Fast File Search
+
 Find files quickly in current directory and subdirectories:
 ```bash
 # Search for file by name

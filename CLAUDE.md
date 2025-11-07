@@ -27,6 +27,9 @@ The setup script automatically:
 - Creates symlinks for all commands in `~/.local/bin`
 - Adds `~/.local/bin` to PATH in `~/.bashrc` and `~/.profile`
 - Makes all plugin scripts executable
+- Installs wrapper functions in `~/.bashrc`:
+    - `mlh()` wrapper: Ensures current session history is visible
+    - `bookmark()` wrapper: Enables `cd` functionality for bookmark navigation
 - Re-execs the shell if commands aren't immediately available
 
 ## Architecture
@@ -104,18 +107,161 @@ Key feature: Automatically mounts the MyLinuxHelper repository at `/opt/mlh` ins
 - Manual updates via `mlh update`
 - Periodic update configuration (daily/weekly/monthly)
 - Auto-update hooks in `~/.bashrc`
+- **Automatic shell reload**: After update, automatically reloads shell with `exec bash -l`
 
 Configuration is stored in `~/.mylinuxhelper/.update-config`.
 
+**Update Process:**
+
+1. Downloads `get-mlh.sh` from GitHub
+2. Runs installation (updates files, runs `setup.sh`)
+3. Automatically reloads shell to apply wrapper functions and updates
+4. No manual `source ~/.bashrc` required
+
+### Quick Directory Bookmarks
+
+`mlh-bookmark.sh` provides a fast navigation system with hierarchical organization:
+
+**Features (Phase 1, 2 & 3 Complete):**
+
+- **Numbered stack**: Quick save/restore (max 10 bookmarks, auto re-numbering on delete)
+- **Named bookmarks**: Persistent bookmarks with memorable names
+- **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Interactive menu**: Full-featured TUI with arrow key navigation (`bookmark list -i`)
+    - Navigate with ↑/↓ or j/k (vim-style)
+    - Jump, edit, delete bookmarks in real-time
+    - Hierarchical category display
+    - Built-in help menu ('h' key)
+- **Category filtering**: List and filter by category
+- **Move bookmarks**: Relocate bookmarks between categories
+- **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
+- **Bookmark management**: Edit, remove, clear operations
+- **JSON storage**: `~/.mylinuxhelper/bookmarks.json`
+- **Shell integration**: Wrapper function enables instant `cd` navigation
+
+**Architecture:**
+
+- Stack-based unnamed bookmarks (LIFO, auto-rotating)
+- Named bookmarks with category support and access tracking
+- Command name conflict detection (prevents naming conflicts with system commands)
+- Path validation with warnings (⚠ symbol for missing paths)
+- jq-based JSON manipulation
+- Bash wrapper function for parent shell directory changes
+
+**Usage patterns:**
+
+```bash
+bookmark .                      # Save current dir (becomes #1)
+bookmark 1                      # Jump to bookmark #1
+bookmark . -n myproject         # Save with name
+bookmark . -n mlh in projects   # Save with category
+bookmark myproject              # Jump to named bookmark
+bookmark list                   # Show all bookmarks (grouped by category)
+bookmark list -i                # Interactive menu (arrow keys, edit, delete)
+bookmark list projects          # Filter by category
+bookmark mv mlh to tools        # Move bookmark to different category
+bookmark edit myproject         # Edit bookmark (name/path/category)
+bookmark rm myproject           # Remove bookmark
+bookmark rm 2                   # Remove #2 (auto re-numbers remaining)
+bookmark find java              # Search bookmarks
+bookmark clear                  # Clear all numbered bookmarks
+```
+
+**Wrapper Function (setup.sh):**
+
+The `setup.sh` script automatically installs a wrapper function in `~/.bashrc` that enables `cd` functionality:
+
+- When jumping to bookmarks (`bookmark 1` or `bookmark name`), the wrapper evaluates the output
+- The script outputs a `cd` command that the wrapper executes in the parent shell
+- Other commands (`list`, `mv`, save operations) pass through normally
+
+**Storage format:**
+
+```json
+{
+   "bookmarks": {
+      "named": [
+         {
+            name,
+            path,
+            category,
+            created,
+            accessed,
+            access_count
+         }
+      ],
+      "unnamed": [
+         {
+            id,
+            path,
+            created
+         }
+      ]
+   },
+   "config": {
+      max_unnamed: 10,
+      auto_cleanup: true
+   }
+}
+```
+
 ## Testing & Development
+
+### Test Execution (Project-Specific)
+
+**Docker command for this project:**
+
+```bash
+docker run --rm -v "//c/Kodlar/Python-Bash-Bat/MyLinuxHelper://mlh" ubuntu:22.04 bash -c \
+  "cd /mlh && apt-get update -qq && apt-get install -y -qq jq >/dev/null 2>&1 && \
+   bash tests/test <test-name>"
+```
+
+**Local testing:**
+
+```bash
+bash tests/test <test-name>
+```
+
+### Automated Testing
+
+The test suite uses a standardized framework:
+
+```bash
+# Run all tests
+bash tests/test
+
+# Run specific test suite
+bash tests/test mlh-bookmark
+
+# Test output format
+✓ PASS: Test description
+✗ FAIL: Test description
+  Error details
+⊘ SKIP: Test description
+  Reason for skip
+```
+
+**Test File Structure:**
+
+```bash
+tests/
+├── test                      # Main test runner
+├── test-mlh-bookmark.sh     # Bookmark feature tests (72 tests - Phase 1, 2 & 3 + bug fixes)
+├── test-mlh-history.sh      # History feature tests
+├── test-mlh-json.sh         # JSON validation tests
+└── ...
+```
 
 ### Manual Testing
 
 After making changes to any plugin script:
 
 1. Run `./setup.sh` to refresh symlinks and permissions
-2. Test the command directly (e.g., `mlh docker in test`)
-3. Test both standalone mode and via `mlh` dispatcher
+2. **Run automated tests**: `bash tests/test <component>`
+3. **Verify all tests pass** before proceeding
+4. Test the command directly (e.g., `mlh docker in test`)
+5. Test both standalone mode and via `mlh` dispatcher
 
 ### Common Development Patterns
 
@@ -188,16 +334,31 @@ When releasing a new version:
 ```
 /
 ├── get-mlh.sh          # Bootstrap installer (downloads repo)
-├── setup.sh            # Creates symlinks and configures PATH
+├── setup.sh            # Creates symlinks, configures PATH, installs wrapper functions
 ├── install.sh          # Universal package installer (provides 'i' command)
-└── plugins/
-    ├── mlh.sh          # Main command dispatcher with interactive menu
-    ├── mlh-docker.sh   # Docker container shortcuts
-    ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
-    ├── mlh-version.sh  # Version management and auto-update system
-    ├── mlh-about.sh    # Project information
-    ├── linux.sh        # Docker container lifecycle management
-    ├── search.sh       # File search using find
-    ├── isjsonvalid.sh  # Centralized JSON validation engine
-    └── ll.sh           # ls -la shortcut
+├── README.md           # User documentation with usage examples
+├── CLAUDE.md           # Development documentation (this file)
+├── TODO.md             # Feature roadmap and implementation checklist
+├── .gitignore          # Ignore IDE files, OS files, runtime data
+├── plugins/
+│   ├── mlh.sh          # Main command dispatcher with interactive menu
+│   ├── mlh-bookmark.sh # Quick directory bookmarks (JSON-based, category support)
+│   ├── mlh-docker.sh   # Docker container shortcuts
+│   ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
+│   ├── mlh-history.sh  # Enhanced command history with date tracking
+│   ├── mlh-version.sh  # Version management and auto-update system
+│   ├── mlh-about.sh    # Project information
+│   ├── linux.sh        # Docker container lifecycle management
+│   ├── search.sh       # File search using find
+│   ├── isjsonvalid.sh  # Centralized JSON validation engine
+│   └── ll.sh           # ls -la shortcut
+└── tests/
+    ├── test                      # Main test runner framework (238 tests total)
+    ├── test-mlh-bookmark.sh     # Bookmark tests (72 tests, requires jq)
+    ├── test-mlh-history.sh      # History tests (34 tests)
+    ├── test-mlh-json.sh         # JSON validation tests (18 tests)
+    ├── test-mlh-docker.sh       # Docker tests (18 tests)
+    ├── test-current-session.sh  # Session history tests (1 test)
+    ├── test-time-debug.sh       # Time parsing tests (4 tests)
+    └── ...
 ```
