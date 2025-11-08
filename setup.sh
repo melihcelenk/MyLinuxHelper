@@ -9,6 +9,23 @@ PLUGINS_DIR="$ROOT_DIR/plugins"
 LOCAL_BIN="$HOME/.local/bin"
 BASHRC="$HOME/.bashrc"
 PROFILE="$HOME/.profile"
+MLH_CONFIG_DIR="$HOME/.mylinuxhelper"
+ALIAS_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
+
+# Colors for output
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Track if bashrc was updated (for notification at end)
+BASHRC_UPDATED=0
+
+# Load bookmark alias configuration if exists
+BOOKMARK_ALIAS=""
+if [ -f "$ALIAS_CONFIG_FILE" ]; then
+	# shellcheck source=/dev/null
+	source "$ALIAS_CONFIG_FILE" 2>/dev/null || true
+fi
 
 # 1) Ensure ~/.local/bin exists and added to PATH for future shells
 mkdir -p "$LOCAL_BIN"
@@ -39,6 +56,7 @@ mlh() {
 }
 EOF
 	echo "Added mlh wrapper function to ~/.bashrc"
+	BASHRC_UPDATED=1
 fi
 
 # 1c) Add bookmark wrapper function for cd functionality
@@ -112,6 +130,37 @@ bookmark() {
 }
 EOF
 	echo "Added bookmark wrapper function to ~/.bashrc"
+	BASHRC_UPDATED=1
+fi
+
+# 1d) Add bookmark alias wrapper if configured
+if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+	# Validate alias name (alphanumeric only, no spaces or special chars)
+	if [[ ! "$BOOKMARK_ALIAS" =~ ^[a-zA-Z0-9_]+$ ]]; then
+		echo -e "${YELLOW}Warning: Invalid alias name '$BOOKMARK_ALIAS' in config (must be alphanumeric)${NC}"
+		BOOKMARK_ALIAS=""
+	else
+		# Check for command conflicts
+		if command -v "$BOOKMARK_ALIAS" >/dev/null 2>&1; then
+			echo -e "${YELLOW}Warning: Command '$BOOKMARK_ALIAS' already exists, skipping alias creation${NC}"
+			echo -e "${YELLOW}Conflicting command: $(command -v "$BOOKMARK_ALIAS")${NC}"
+			BOOKMARK_ALIAS=""
+		else
+			ALIAS_WRAPPER_MARKER="# MyLinuxHelper - $BOOKMARK_ALIAS alias wrapper"
+			if ! grep -Fq "$ALIAS_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
+				cat >>"$BASHRC" <<EOF
+
+# MyLinuxHelper - $BOOKMARK_ALIAS alias wrapper
+# Shortcut alias for bookmark command (delegates to bookmark function for cd support)
+$BOOKMARK_ALIAS() {
+  bookmark "\$@"
+}
+EOF
+				echo "Added $BOOKMARK_ALIAS alias wrapper to ~/.bashrc"
+				BASHRC_UPDATED=1
+			fi
+		fi
+	fi
 fi
 
 # 2) Make scripts executable
@@ -129,6 +178,11 @@ declare -A LINKS=(
 	["$LOCAL_BIN/mlh"]="$PLUGINS_DIR/mlh.sh"
 	["$LOCAL_BIN/search"]="$PLUGINS_DIR/search.sh"
 )
+
+# Add bookmark alias symlink if configured
+if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+	LINKS["$LOCAL_BIN/$BOOKMARK_ALIAS"]="$PLUGINS_DIR/mlh-bookmark.sh"
+fi
 
 for link in "${!LINKS[@]}"; do
 	target="${LINKS[$link]}"
@@ -149,6 +203,12 @@ if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; t
 		["/usr/local/bin/mlh"]="$PLUGINS_DIR/mlh.sh"
 		["/usr/local/bin/search"]="$PLUGINS_DIR/search.sh"
 	)
+	
+	# Add bookmark alias to usr/local if configured
+	if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+		ULINKS["/usr/local/bin/$BOOKMARK_ALIAS"]="$PLUGINS_DIR/mlh-bookmark.sh"
+	fi
+	
 	for link in "${!ULINKS[@]}"; do
 		target="${ULINKS[$link]}"
 		sudo rm -f "$link" 2>/dev/null || true
@@ -165,7 +225,7 @@ for bin in i isjsonvalid ll linux mlh search; do
 	fi
 done
 
-echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux, mlh, search"
+echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux, mlh, search${BOOKMARK_ALIAS:+, $BOOKMARK_ALIAS}"
 echo ""
 echo "Examples:"
 echo "  linux mycontainer                    # Create ephemeral container (default)"
@@ -184,6 +244,15 @@ echo "  mlh json --isvalid data.json         # Detailed JSON validation"
 echo "  mlh json get name from users.json    # Search JSON with fuzzy matching"
 echo ""
 echo "  ll /var/log                          # List directory contents with details"
+
+# Show warning if bashrc was updated
+if [ "$BASHRC_UPDATED" -eq 1 ]; then
+	echo ""
+	echo -e "${YELLOW}⚠️  Important: Shell configuration updated!${NC}"
+	echo -e "${YELLOW}   Run this command to apply changes in current session:${NC}"
+	echo -e "${CYAN}   source ~/.bashrc${NC}"
+	echo ""
+fi
 
 if [ "$need_reload" -eq 1 ] && [ -t 1 ] && [ -z "${MLH_RELOADED:-}" ]; then
 	echo "↻ Opening a fresh login shell so commands are available immediately..."

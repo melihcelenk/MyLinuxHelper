@@ -30,7 +30,19 @@ readonly NC='\033[0m' # No Color
 readonly VERSION="1.0.0"
 readonly MLH_CONFIG_DIR="${HOME}/.mylinuxhelper"
 readonly BOOKMARK_FILE="${MLH_BOOKMARK_FILE:-$MLH_CONFIG_DIR/bookmarks.json}"
+readonly ALIAS_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
 readonly MAX_UNNAMED_BOOKMARKS=10
+
+# Load alias configuration if exists
+BOOKMARK_ALIAS=""
+if [ -f "$ALIAS_CONFIG_FILE" ]; then
+	# Source the config file to get BOOKMARK_ALIAS value
+	# shellcheck source=/dev/null
+	source "$ALIAS_CONFIG_FILE" 2>/dev/null || true
+fi
+
+# Determine command name for help messages (alias if configured, otherwise 'bookmark')
+COMMAND_NAME="${BOOKMARK_ALIAS:-bookmark}"
 
 # Common command names to block as bookmark names
 readonly BLOCKED_NAMES=(
@@ -1130,71 +1142,78 @@ list_bookmarks() {
 show_help() {
 	echo -e "${CYAN}mlh-bookmark.sh${NC} - Quick directory bookmark system (v$VERSION)"
 	echo ""
+	
+	# Show shortcut info if alias is configured
+	if [ -n "$BOOKMARK_ALIAS" ]; then
+		echo -e "${GREEN}Shortcut:${NC} You can use '${CYAN}${BOOKMARK_ALIAS}${NC}' instead of 'bookmark'"
+		echo ""
+	fi
+	
 	echo -e "${YELLOW}USAGE:${NC}"
-	cat <<'EOF'
-  bookmark .                    Save current directory as numbered bookmark
-  bookmark 1                    Jump to bookmark 1
-  bookmark . -n <name>          Save current directory with name
-  bookmark . -n <name> in <cat> Save with category
-  bookmark <name>               Jump to named bookmark
-  bookmark 1 -n <name>          Rename bookmark 1 to name
-  bookmark list                 List all bookmarks
-  bookmark list -i              Interactive list (arrow keys, delete, edit)
-  bookmark list <category>      List bookmarks in category
-  bookmark list <N>             List last N unnamed bookmarks
-  bookmark mv <name> to <cat>   Move bookmark to category
-  bookmark rm <name|number>     Remove a bookmark
-  bookmark clear                Clear all unnamed bookmarks
-  bookmark edit <name>          Edit bookmark (name/path/category)
-  bookmark find <pattern>       Search bookmarks by pattern
-  bookmark --help               Show this help
+	cat <<EOF
+  $COMMAND_NAME .                    Save current directory as numbered bookmark
+  $COMMAND_NAME 1                    Jump to bookmark 1
+  $COMMAND_NAME . -n <name>          Save current directory with name
+  $COMMAND_NAME . -n <name> in <cat> Save with category
+  $COMMAND_NAME <name>               Jump to named bookmark
+  $COMMAND_NAME 1 -n <name>          Rename bookmark 1 to name
+  $COMMAND_NAME list                 List all bookmarks
+  $COMMAND_NAME list -i              Interactive list (arrow keys, delete, edit)
+  $COMMAND_NAME list <category>      List bookmarks in category
+  $COMMAND_NAME list <N>             List last N unnamed bookmarks
+  $COMMAND_NAME mv <name> to <cat>   Move bookmark to category
+  $COMMAND_NAME rm <name|number>     Remove a bookmark
+  $COMMAND_NAME clear                Clear all unnamed bookmarks
+  $COMMAND_NAME edit <name>          Edit bookmark (name/path/category)
+  $COMMAND_NAME find <pattern>       Search bookmarks by pattern
+  $COMMAND_NAME --help               Show this help
 EOF
 	echo ""
 	echo -e "${YELLOW}EXAMPLES:${NC}"
 	echo -e "  ${GREEN}# Quick numbered bookmarks${NC}"
-	cat <<'EOF'
-  bookmark .                    # Save current dir (becomes bookmark 1)
+	cat <<EOF
+  $COMMAND_NAME .                    # Save current dir (becomes bookmark 1)
   cd /some/other/path
-  bookmark .                    # Save another dir (becomes bookmark 1, previous becomes 2)
-  bookmark 1                    # Jump to most recent bookmark
-  bookmark 2                    # Jump to second most recent
+  $COMMAND_NAME .                    # Save another dir (becomes bookmark 1, previous becomes 2)
+  $COMMAND_NAME 1                    # Jump to most recent bookmark
+  $COMMAND_NAME 2                    # Jump to second most recent
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Named bookmarks${NC}"
-	cat <<'EOF'
-  bookmark . -n myproject       # Save current dir as 'myproject'
-  bookmark myproject            # Jump to myproject
-  bookmark 1 -n webapp          # Rename bookmark 1 to 'webapp'
+	cat <<EOF
+  $COMMAND_NAME . -n myproject       # Save current dir as 'myproject'
+  $COMMAND_NAME myproject            # Jump to myproject
+  $COMMAND_NAME 1 -n webapp          # Rename bookmark 1 to 'webapp'
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Categorized bookmarks${NC}"
-	cat <<'EOF'
-  bookmark . -n mlh in projects/linux    # Save with category
-  bookmark 1 -n api in projects/java     # Rename with category
-  bookmark mv mlh to tools               # Move to different category
+	cat <<EOF
+  $COMMAND_NAME . -n mlh in projects/linux    # Save with category
+  $COMMAND_NAME 1 -n api in projects/java     # Rename with category
+  $COMMAND_NAME mv mlh to tools               # Move to different category
 EOF
 	echo ""
 	echo -e "  ${GREEN}# List bookmarks${NC}"
-	cat <<'EOF'
-  bookmark list                 # Show all bookmarks (grouped by category)
-  bookmark list -i              # Interactive menu with arrow key navigation
-  bookmark list projects        # Show only 'projects' category
-  bookmark list projects/java   # Show nested category
-  bookmark list 5               # Show last 5 unnamed bookmarks
+	cat <<EOF
+  $COMMAND_NAME list                 # Show all bookmarks (grouped by category)
+  $COMMAND_NAME list -i              # Interactive menu with arrow key navigation
+  $COMMAND_NAME list projects        # Show only 'projects' category
+  $COMMAND_NAME list projects/java   # Show nested category
+  $COMMAND_NAME list 5               # Show last 5 unnamed bookmarks
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Remove bookmarks${NC}"
-	cat <<'EOF'
-  bookmark rm myproject         # Remove named bookmark
-  bookmark rm 1                 # Remove numbered bookmark
-  bookmark clear                # Clear all unnamed bookmarks
+	cat <<EOF
+  $COMMAND_NAME rm myproject         # Remove named bookmark
+  $COMMAND_NAME rm 1                 # Remove numbered bookmark
+  $COMMAND_NAME clear                # Clear all unnamed bookmarks
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Edit and search${NC}"
-	cat <<'EOF'
-  bookmark edit myproject       # Edit bookmark interactively
-  bookmark find proj            # Search bookmarks by pattern
-  bookmark find /home/user      # Search by path
+	cat <<EOF
+  $COMMAND_NAME edit myproject       # Edit bookmark interactively
+  $COMMAND_NAME find proj            # Search bookmarks by pattern
+  $COMMAND_NAME find /home/user      # Search by path
 EOF
 	echo ""
 	echo -e "${YELLOW}FEATURES:${NC}"
