@@ -1158,7 +1158,7 @@ list_bookmarks() {
 
 # Show help
 show_help() {
-	echo -e "${CYAN}mlh-bookmark.sh${NC} - Quick directory bookmark system (v$VERSION)"
+	echo -e "${CYAN}bookmark${NC} - Quick directory bookmark system (v$VERSION)"
 	echo ""
 	
 	# Show shortcut info if alias is configured
@@ -1167,35 +1167,59 @@ show_help() {
 		echo ""
 	fi
 	
-	echo -e "${YELLOW}USAGE:${NC}"
+	echo "Usage:"
 	cat <<EOF
   $COMMAND_NAME .                    Save current directory as numbered bookmark
-  $COMMAND_NAME 1                    Jump to bookmark 1
-  $COMMAND_NAME . -n <name>          Save current directory with name
-  $COMMAND_NAME . -n <name> in <cat> Save with category
+  $COMMAND_NAME <number>             Jump to numbered bookmark
   $COMMAND_NAME <name>               Jump to named bookmark
-  $COMMAND_NAME 1 -n <name>          Rename bookmark 1 to name
-  $COMMAND_NAME list                 Interactive list (arrow keys, delete, edit) [DEFAULT]
-  $COMMAND_NAME list -n              Non-interactive list (simple output)
-  $COMMAND_NAME list -n <category>   Non-interactive list for category
-  $COMMAND_NAME list -n <N>          List last N unnamed bookmarks (non-interactive)
-  $COMMAND_NAME list <category>      Interactive list filtered by category
-  $COMMAND_NAME list <N>             List last N unnamed (non-interactive)
-  $COMMAND_NAME mv <name> to <cat>   Move bookmark to category
-  $COMMAND_NAME rm <name|number>     Remove a bookmark
-  $COMMAND_NAME clear                Clear all unnamed bookmarks
-  $COMMAND_NAME edit <name>          Edit bookmark (name/path/category)
-  $COMMAND_NAME find <pattern>       Search bookmarks by pattern
   $COMMAND_NAME --help               Show this help
 EOF
 	echo ""
-	echo -e "${YELLOW}EXAMPLES:${NC}"
+	echo "Commands:"
+	cat <<EOF
+  Save:
+    $COMMAND_NAME .                    Save current directory (becomes bookmark #1)
+    $COMMAND_NAME . -n <name>          Save with name
+    $COMMAND_NAME . -n <name> in <cat> Save with category
+    $COMMAND_NAME <number> -n <name>   Rename numbered bookmark to name
+
+  Navigate:
+    $COMMAND_NAME <number>             Jump to numbered bookmark (1-10)
+    $COMMAND_NAME <name>               Jump to named bookmark
+
+  List:
+    $COMMAND_NAME list                 Interactive menu (default, arrow keys)
+    $COMMAND_NAME list -n              Non-interactive list (simple output)
+    $COMMAND_NAME list <category>      Interactive list filtered by category
+    $COMMAND_NAME list -n <category>   Non-interactive list for category
+    $COMMAND_NAME list <N>             List last N unnamed bookmarks
+
+  Manage:
+    $COMMAND_NAME mv <name> to <cat>   Move bookmark to category
+    $COMMAND_NAME edit <name>          Edit bookmark (name/path/category)
+    $COMMAND_NAME rm <name|number>     Remove a bookmark
+    $COMMAND_NAME clear                Clear all numbered bookmarks
+    $COMMAND_NAME find <pattern>       Search bookmarks by pattern
+EOF
+	echo ""
+	echo "Features:"
+	cat <<EOF
+  • Stack-based numbered bookmarks (max 10, LIFO)
+  • Named bookmarks with categories
+  • Interactive menu with arrow key navigation
+  • Hierarchical categories (e.g., projects/linux/tools)
+  • Path validation with warnings (⚠ symbol)
+  • Command name conflict detection
+  • JSON storage: $BOOKMARK_FILE
+EOF
+	echo ""
+	echo "Examples:"
 	echo -e "  ${GREEN}# Quick numbered bookmarks${NC}"
 	cat <<EOF
-  $COMMAND_NAME .                    # Save current dir (becomes bookmark 1)
+  $COMMAND_NAME .                    # Save current dir (becomes #1)
   cd /some/other/path
-  $COMMAND_NAME .                    # Save another dir (becomes bookmark 1, previous becomes 2)
-  $COMMAND_NAME 1                    # Jump to most recent bookmark
+  $COMMAND_NAME .                    # Save another (becomes #1, previous → #2)
+  $COMMAND_NAME 1                    # Jump to most recent
   $COMMAND_NAME 2                    # Jump to second most recent
 EOF
 	echo ""
@@ -1203,55 +1227,42 @@ EOF
 	cat <<EOF
   $COMMAND_NAME . -n myproject       # Save current dir as 'myproject'
   $COMMAND_NAME myproject            # Jump to myproject
-  $COMMAND_NAME 1 -n webapp          # Rename bookmark 1 to 'webapp'
+  $COMMAND_NAME 1 -n webapp          # Rename bookmark #1 to 'webapp'
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Categorized bookmarks${NC}"
 	cat <<EOF
   $COMMAND_NAME . -n mlh in projects/linux    # Save with category
-  $COMMAND_NAME 1 -n api in projects/java     # Rename with category
+  $COMMAND_NAME . -n api in projects/java     # Another category
   $COMMAND_NAME mv mlh to tools               # Move to different category
 EOF
 	echo ""
-	echo -e "  ${GREEN}# List bookmarks${NC}"
+	echo -e "  ${GREEN}# List and navigate${NC}"
 	cat <<EOF
   $COMMAND_NAME list                 # Interactive menu (default)
-  $COMMAND_NAME list -n              # Non-interactive list (simple output)
-  $COMMAND_NAME list projects        # Interactive list for 'projects' category
-  $COMMAND_NAME list -n projects     # Non-interactive list for category
-  $COMMAND_NAME list 5               # Show last 5 unnamed bookmarks
-EOF
-	echo ""
-	echo -e "  ${GREEN}# Remove bookmarks${NC}"
-	cat <<EOF
-  $COMMAND_NAME rm myproject         # Remove named bookmark
-  $COMMAND_NAME rm 1                 # Remove numbered bookmark
-  $COMMAND_NAME clear                # Clear all unnamed bookmarks
+  $COMMAND_NAME list -n              # Non-interactive list
+  $COMMAND_NAME list projects        # Interactive, filtered by category
+  $COMMAND_NAME list -n projects     # Non-interactive, filtered
+  $COMMAND_NAME list 5               # Show last 5 numbered bookmarks
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Edit and search${NC}"
 	cat <<EOF
   $COMMAND_NAME edit myproject       # Edit bookmark interactively
   $COMMAND_NAME find proj            # Search bookmarks by pattern
-  $COMMAND_NAME find /home/user      # Search by path
+  $COMMAND_NAME find /home           # Search by path
+  $COMMAND_NAME rm myproject         # Remove named bookmark
+  $COMMAND_NAME rm 1                 # Remove numbered bookmark
+  $COMMAND_NAME clear                # Clear all numbered bookmarks (asks confirmation)
 EOF
 	echo ""
-	echo -e "${YELLOW}FEATURES:${NC}"
+	echo "Notes:"
 	cat <<EOF
-  • Stack-based numbered bookmarks (max 10)
-  • Named bookmarks for important locations
-  • Categorized bookmarks (hierarchical organization)
-  • Category filtering in list view
-  • Path validation and warnings
-  • Command name conflict detection
-  • JSON storage at: $BOOKMARK_FILE
-EOF
-	echo ""
-	echo -e "${YELLOW}SYMBOLS:${NC}"
-	cat <<'EOF'
-  ⚠  Path no longer exists on disk
-  →  Navigating to bookmark
-  ✓  Bookmark saved successfully
+  • Symbols: ⚠ (path missing), → (navigating), ✓ (saved)
+  • Interactive mode: Use ↑/↓ or j/k to navigate, Enter to jump, e to edit, d to delete, h for help
+  • Numbered bookmarks are LIFO (last added becomes #1)
+  • Category names support slashes for hierarchy (e.g., work/projects/java)
+  • Configure custom alias in: ~/.mylinuxhelper/mlh.conf (BOOKMARK_ALIAS=bm)
 EOF
 }
 
