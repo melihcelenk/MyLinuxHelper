@@ -62,31 +62,59 @@ _install_do() {
 		rc=0
 		case "$manager" in
 		apt)
-			[ "$use_sudo" -eq 1 ] && sudo apt update -y && sudo apt install -y "$pkg" || { apt update -y && apt install -y "$pkg"; }
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo apt update -y && sudo apt install -y "$pkg"
+			else
+				apt update -y && apt install -y "$pkg"
+			fi
 			rc=$?
 			;;
 		apt-get)
-			[ "$use_sudo" -eq 1 ] && sudo apt-get update -y && sudo apt-get install -y "$pkg" || { apt-get update -y && apt-get install -y "$pkg"; }
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo apt-get update -y && sudo apt-get install -y "$pkg"
+			else
+				apt-get update -y && apt-get install -y "$pkg"
+			fi
 			rc=$?
 			;;
 		dnf)
-			[ "$use_sudo" -eq 1 ] && sudo dnf install -y "$pkg" || dnf install -y "$pkg"
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo dnf install -y "$pkg"
+			else
+				dnf install -y "$pkg"
+			fi
 			rc=$?
 			;;
 		yum)
-			[ "$use_sudo" -eq 1 ] && sudo yum install -y "$pkg" || yum install -y "$pkg"
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo yum install -y "$pkg"
+			else
+				yum install -y "$pkg"
+			fi
 			rc=$?
 			;;
 		zypper)
-			[ "$use_sudo" -eq 1 ] && sudo zypper install -y "$pkg" || zypper install -y "$pkg"
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo zypper install -y "$pkg"
+			else
+				zypper install -y "$pkg"
+			fi
 			rc=$?
 			;;
 		pacman)
-			[ "$use_sudo" -eq 1 ] && sudo pacman -Sy --noconfirm "$pkg" || pacman -Sy --noconfirm "$pkg"
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo pacman -Sy --noconfirm "$pkg"
+			else
+				pacman -Sy --noconfirm "$pkg"
+			fi
 			rc=$?
 			;;
 		apk)
-			[ "$use_sudo" -eq 1 ] && sudo apk add "$pkg" || apk add "$pkg"
+			if [ "$use_sudo" -eq 1 ]; then
+				sudo apk add "$pkg"
+			else
+				apk add "$pkg"
+			fi
 			rc=$?
 			;;
 		esac

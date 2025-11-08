@@ -30,15 +30,15 @@ readonly NC='\033[0m' # No Color
 readonly VERSION="1.0.0"
 readonly MLH_CONFIG_DIR="${HOME}/.mylinuxhelper"
 readonly BOOKMARK_FILE="${MLH_BOOKMARK_FILE:-$MLH_CONFIG_DIR/bookmarks.json}"
-readonly ALIAS_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
+readonly MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
 readonly MAX_UNNAMED_BOOKMARKS=10
 
-# Load alias configuration if exists
+# Load alias configuration from mlh.conf
 BOOKMARK_ALIAS=""
-if [ -f "$ALIAS_CONFIG_FILE" ]; then
-	# Source the config file to get BOOKMARK_ALIAS value
+if [ -f "$MLH_CONFIG_FILE" ]; then
+	# Source the main config file to get BOOKMARK_ALIAS value
 	# shellcheck source=/dev/null
-	source "$ALIAS_CONFIG_FILE" 2>/dev/null || true
+	source "$MLH_CONFIG_FILE" 2>/dev/null || true
 fi
 
 # Determine command name for help messages (alias if configured, otherwise 'bookmark')
@@ -536,7 +536,7 @@ find_bookmarks() {
 	# Convert pattern to lowercase for case-insensitive search
 	local pattern_lower
 	pattern_lower=$(echo "$pattern" | tr '[:upper:]' '[:lower:]')
-	
+
 	named_results=$(jq -r --arg pattern "$pattern_lower" '
 		.bookmarks.named[] | 
 		select(
@@ -601,7 +601,7 @@ interactive_list() {
 	local named_count unnamed_count
 	named_count=$(jq '.bookmarks.named | length' "$BOOKMARK_FILE" 2>/dev/null || echo "0")
 	unnamed_count=$(jq '.bookmarks.unnamed | length' "$BOOKMARK_FILE" 2>/dev/null || echo "0")
-	
+
 	if [ "$named_count" -eq 0 ] && [ "$unnamed_count" -eq 0 ]; then
 		echo -e "${YELLOW}No bookmarks yet. Use 'bookmark .' to save current directory.${NC}"
 		return 0
@@ -612,11 +612,11 @@ interactive_list() {
 	local -a entry_ids
 	local -a entry_types
 	local idx=0
-	
+
 	# Group named bookmarks by category
 	local categories
 	categories=$(jq -r '.bookmarks.named | group_by(.category // "Uncategorized") | .[] | .[0].category // "Uncategorized"' "$BOOKMARK_FILE" 2>/dev/null | sort -u 2>/dev/null) || categories=""
-	
+
 	# Add category headers and bookmarks
 	if [ -n "$categories" ]; then
 		while IFS= read -r category || [ -n "$category" ]; do
@@ -625,7 +625,7 @@ interactive_list() {
 				# Add bookmarks in this category
 				local bookmark_data
 				bookmark_data=$(jq -r --arg cat "$category" '.bookmarks.named[] | select((.category // "Uncategorized") == $cat) | "\(.name)|\(.path)|\(.created)"' "$BOOKMARK_FILE" 2>/dev/null) || bookmark_data=""
-				
+
 				if [ -n "$bookmark_data" ]; then
 					while IFS='|' read -r name path created || [ -n "$name" ]; do
 						[ -z "$name" ] && break
@@ -635,17 +635,17 @@ interactive_list() {
 							entry_types+=("named")
 							((idx++)) || true
 						fi
-					done <<< "$bookmark_data"
+					done <<<"$bookmark_data"
 				fi
 			fi
-		done <<< "$categories"
+		done <<<"$categories"
 	fi
-	
+
 	# Add unnamed bookmarks
 	if [ "$unnamed_count" -gt 0 ]; then
 		local unnamed_data
 		unnamed_data=$(jq -r '.bookmarks.unnamed[] | "\(.id)|\(.path)|\(.created)"' "$BOOKMARK_FILE" 2>/dev/null) || unnamed_data=""
-		
+
 		if [ -n "$unnamed_data" ]; then
 			while IFS='|' read -r id path created || [ -n "$id" ]; do
 				[ -z "$id" ] && break
@@ -655,19 +655,19 @@ interactive_list() {
 					entry_types+=("unnamed")
 					((idx++)) || true
 				fi
-			done <<< "$unnamed_data"
+			done <<<"$unnamed_data"
 		fi
 	fi
-	
+
 	if [ ${#entries[@]} -eq 0 ]; then
 		echo -e "${YELLOW}No bookmarks to display${NC}"
 		return 0
 	fi
-	
+
 	local selected=0
 	local total=${#entries[@]}
 	local current_category=""
-	
+
 	# Display function
 	show_menu() {
 		# Clear screen only if we have a TTY
@@ -680,11 +680,11 @@ interactive_list() {
 		printf "│%*s📚 Bookmarks (%d total)%*s│\n" 22 "" $display_count 22 ""
 		echo "└─────────────────────────────────────────────────────────────────┘"
 		echo ""
-		
+
 		current_category=""
 		for i in "${!entries[@]}"; do
 			IFS='|' read -r type id_or_name path category created <<<"${entries[$i]}"
-			
+
 			# Show category header
 			if [ "$type" = "named" ] && [ "$category" != "$current_category" ]; then
 				current_category="$category"
@@ -694,14 +694,14 @@ interactive_list() {
 				echo ""
 				echo -e "${BLUE}$current_category${NC}"
 			fi
-			
+
 			# Show bookmark
 			if [ "$i" -eq "$selected" ]; then
 				echo -en "${GREEN}  ▶ "
 			else
 				echo -n "    "
 			fi
-			
+
 			if [ "$type" = "named" ]; then
 				printf "${GREEN}[%s]${NC}" "$id_or_name"
 				# Pad to 15 chars
@@ -719,12 +719,12 @@ interactive_list() {
 			fi
 			echo ""
 		done
-		
+
 		echo ""
 		echo "────────────────────────────────────────────────────────────────────"
 		echo -e "${YELLOW}j/k or ↑/↓:${NC} Navigate | ${YELLOW}Enter:${NC} Jump | ${YELLOW}d:${NC} Delete | ${YELLOW}e:${NC} Edit | ${YELLOW}h:${NC} Help | ${YELLOW}q:${NC} Quit"
 	}
-	
+
 	# Show help
 	show_help_menu() {
 		clear
@@ -752,12 +752,12 @@ interactive_list() {
 		if [ -t 0 ]; then
 			read -rp "Press any key to continue..." -n1
 		elif [ -e /dev/tty ]; then
-			read -rp "Press any key to continue..." -n1 < /dev/tty
+			read -rp "Press any key to continue..." -n1 </dev/tty
 		else
 			read -rp "Press any key to continue..." -n1
 		fi
 	}
-	
+
 	# Main loop
 	while true; do
 		# Show menu - ensure it always displays something
@@ -768,7 +768,7 @@ interactive_list() {
 				return 1
 			}
 		fi
-		
+
 		# Read key with proper handling
 		# Interactive mode - wait for user input (no timeout)
 		# In WSL, prefer stdin if it's a TTY, otherwise try /dev/tty
@@ -780,7 +780,7 @@ interactive_list() {
 			fi
 		elif [ -e /dev/tty ]; then
 			# Not a TTY but /dev/tty exists - read from /dev/tty
-			if ! read -rsn1 key < /dev/tty 2>/dev/null; then
+			if ! read -rsn1 key </dev/tty 2>/dev/null; then
 				continue
 			fi
 		else
@@ -789,14 +789,14 @@ interactive_list() {
 				continue
 			fi
 		fi
-		
+
 		# Handle arrow keys (escape sequences)
 		if [[ $key == $'\x1b' ]]; then
 			rest=""
 			if [ -t 0 ]; then
 				read -rsn1 -t 0.5 rest 2>/dev/null || rest=""
 			elif [ -e /dev/tty ]; then
-				read -rsn1 -t 0.5 rest < /dev/tty 2>/dev/null || rest=""
+				read -rsn1 -t 0.5 rest </dev/tty 2>/dev/null || rest=""
 			else
 				read -rsn1 -t 0.5 rest 2>/dev/null || rest=""
 			fi
@@ -805,7 +805,7 @@ interactive_list() {
 				if [ -t 0 ]; then
 					read -rsn1 -t 0.5 rest2 2>/dev/null || rest2=""
 				elif [ -e /dev/tty ]; then
-					read -rsn1 -t 0.5 rest2 < /dev/tty 2>/dev/null || rest2=""
+					read -rsn1 -t 0.5 rest2 </dev/tty 2>/dev/null || rest2=""
 				else
 					read -rsn1 -t 0.5 rest2 2>/dev/null || rest2=""
 				fi
@@ -826,22 +826,26 @@ interactive_list() {
 				key="q"
 			fi
 		fi
-		
-		case "$key" in
-			'UP'|'k'|'K') # Up arrow or k
-				((selected--)) || true
-				[ $selected -lt 0 ] && selected=$((total - 1)) || true
-				;;
-			'DOWN'|'j'|'J') # Down arrow or j
-				((selected++)) || true
-				[ $selected -ge $total ] && selected=0 || true
-				;;
-			'') # Enter
-				local sel_type="${entry_types[$selected]}"
-				local sel_id="${entry_ids[$selected]}"
 
-				# Clear screen before exiting interactive mode
-				clear 2>/dev/null || printf '\033[2J\033[H' 2>/dev/null || true
+		case "$key" in
+		'UP' | 'k' | 'K') # Up arrow or k
+			((selected--)) || true
+			if [ "$selected" -lt 0 ]; then
+				selected=$((total - 1))
+			fi
+			;;
+		'DOWN' | 'j' | 'J') # Down arrow or j
+			((selected++)) || true
+			if [ "$selected" -ge "$total" ]; then
+				selected=0
+			fi
+			;;
+		'') # Enter
+			local sel_type="${entry_types[$selected]}"
+			local sel_id="${entry_ids[$selected]}"
+
+			# Clear screen before exiting interactive mode
+			clear 2>/dev/null || printf '\033[2J\033[H' 2>/dev/null || true
 
 			# Jump to bookmark - get the path
 			local bookmark_path
@@ -851,83 +855,83 @@ interactive_list() {
 				empty
 			' "$BOOKMARK_FILE" 2>/dev/null)
 
-				if [ -z "$bookmark_path" ] || [ "$bookmark_path" = "null" ]; then
-					echo -e "${RED}Error: Bookmark '$sel_id' not found${NC}" >&2
-					return 1
-				fi
+			if [ -z "$bookmark_path" ] || [ "$bookmark_path" = "null" ]; then
+				echo -e "${RED}Error: Bookmark '$sel_id' not found${NC}" >&2
+				return 1
+			fi
 
-				# Check if path exists
-				if [ ! -d "$bookmark_path" ]; then
-					echo -e "${YELLOW}Warning: Path no longer exists: $bookmark_path${NC}" >&2
-					return 1
-				fi
+			# Check if path exists
+			if [ ! -d "$bookmark_path" ]; then
+				echo -e "${YELLOW}Warning: Path no longer exists: $bookmark_path${NC}" >&2
+				return 1
+			fi
 
-				# Write cd command to temp file (ranger-style)
-				# Wrapper function will check this file and source it
-				# Use environment variable if set (unique temp file per invocation)
-				# Otherwise fall back to fixed path (for backward compatibility)
-				local tmp_cd_file="${MLH_BOOKMARK_CD_FILE:-/tmp/bookmark-cd-${USER:-$(id -un)}}"
-				
-				# Ensure temp file directory exists and is writable
-				local tmp_dir
-				tmp_dir=$(dirname "$tmp_cd_file")
-				if [ ! -d "$tmp_dir" ] || [ ! -w "$tmp_dir" ]; then
-					echo -e "${RED}Error: Temp directory not writable: $tmp_dir${NC}" >&2
-					return 1
-				fi
-				
-				# Support multiple selections in same session: append sequence number
-				# Count existing sequence files to generate next number
-				local sequence_num=1
-				while [ -f "${tmp_cd_file}.${sequence_num}" ]; do
-					sequence_num=$((sequence_num + 1))
-				done
-				local tmp_cd_file_seq="${tmp_cd_file}.${sequence_num}"
-				
-				# Write cd command to temp file (use printf for better reliability)
-				# Use atomic write: write to temp file first, then move to final location
-				local tmp_write_file="${tmp_cd_file_seq}.tmp"
-				printf 'cd "%s"\n' "$bookmark_path" > "$tmp_write_file" 2>/dev/null || {
-					echo -e "${RED}Error: Failed to write temp file${NC}" >&2
-					return 1
-				}
-				
-				# Atomically move to final location
-				mv "$tmp_write_file" "$tmp_cd_file_seq" 2>/dev/null || {
-					echo -e "${RED}Error: Failed to move temp file${NC}" >&2
-					rm -f "$tmp_write_file" 2>/dev/null || true
-					return 1
-				}
-				
-				# Verify file was written and has content
-				if [ ! -f "$tmp_cd_file_seq" ] || [ ! -s "$tmp_cd_file_seq" ]; then
-					echo -e "${RED}Error: Temp file not created or empty${NC}" >&2
-					return 1
-				fi
-				
-				# Ensure file is readable
-				if [ ! -r "$tmp_cd_file_seq" ]; then
-					echo -e "${RED}Error: Temp file not readable${NC}" >&2
-					return 1
-				fi
-				
-				# Sync to ensure file is written to disk
-				sync 2>/dev/null || true
-				
-				echo -e "${GREEN}→${NC} $bookmark_path" >&2
+			# Write cd command to temp file (ranger-style)
+			# Wrapper function will check this file and source it
+			# Use environment variable if set (unique temp file per invocation)
+			# Otherwise fall back to fixed path (for backward compatibility)
+			local tmp_cd_file="${MLH_BOOKMARK_CD_FILE:-/tmp/bookmark-cd-${USER:-$(id -un)}}"
 
-				# Exit interactive mode after selection
-				# Each invocation handles one selection
-				return 0
-				;;
-		'd'|'D') # Delete
+			# Ensure temp file directory exists and is writable
+			local tmp_dir
+			tmp_dir=$(dirname "$tmp_cd_file")
+			if [ ! -d "$tmp_dir" ] || [ ! -w "$tmp_dir" ]; then
+				echo -e "${RED}Error: Temp directory not writable: $tmp_dir${NC}" >&2
+				return 1
+			fi
+
+			# Support multiple selections in same session: append sequence number
+			# Count existing sequence files to generate next number
+			local sequence_num=1
+			while [ -f "${tmp_cd_file}.${sequence_num}" ]; do
+				sequence_num=$((sequence_num + 1))
+			done
+			local tmp_cd_file_seq="${tmp_cd_file}.${sequence_num}"
+
+			# Write cd command to temp file (use printf for better reliability)
+			# Use atomic write: write to temp file first, then move to final location
+			local tmp_write_file="${tmp_cd_file_seq}.tmp"
+			printf 'cd "%s"\n' "$bookmark_path" >"$tmp_write_file" 2>/dev/null || {
+				echo -e "${RED}Error: Failed to write temp file${NC}" >&2
+				return 1
+			}
+
+			# Atomically move to final location
+			mv "$tmp_write_file" "$tmp_cd_file_seq" 2>/dev/null || {
+				echo -e "${RED}Error: Failed to move temp file${NC}" >&2
+				rm -f "$tmp_write_file" 2>/dev/null || true
+				return 1
+			}
+
+			# Verify file was written and has content
+			if [ ! -f "$tmp_cd_file_seq" ] || [ ! -s "$tmp_cd_file_seq" ]; then
+				echo -e "${RED}Error: Temp file not created or empty${NC}" >&2
+				return 1
+			fi
+
+			# Ensure file is readable
+			if [ ! -r "$tmp_cd_file_seq" ]; then
+				echo -e "${RED}Error: Temp file not readable${NC}" >&2
+				return 1
+			fi
+
+			# Sync to ensure file is written to disk
+			sync 2>/dev/null || true
+
+			echo -e "${GREEN}→${NC} $bookmark_path" >&2
+
+			# Exit interactive mode after selection
+			# Each invocation handles one selection
+			return 0
+			;;
+		'd' | 'D') # Delete
 			local sel_type="${entry_types[$selected]}"
 			local sel_id="${entry_ids[$selected]}"
 			echo ""
 			if [ -t 0 ]; then
 				read -rp "Delete bookmark [$sel_id]? [y/N]: " confirm
 			elif [ -e /dev/tty ]; then
-				read -rp "Delete bookmark [$sel_id]? [y/N]: " confirm < /dev/tty
+				read -rp "Delete bookmark [$sel_id]? [y/N]: " confirm </dev/tty
 			else
 				read -rp "Delete bookmark [$sel_id]? [y/N]: " confirm
 			fi
@@ -940,10 +944,10 @@ interactive_list() {
 				return $?
 			fi
 			;;
-		'e'|'E') # Edit
+		'e' | 'E') # Edit
 			local sel_type="${entry_types[$selected]}"
 			local sel_id="${entry_ids[$selected]}"
-			
+
 			if [ "$sel_type" = "unnamed" ]; then
 				# Convert to named
 				IFS='|' read -r type id path _ created <<<"${entries[$selected]}"
@@ -951,7 +955,7 @@ interactive_list() {
 				if [ -t 0 ]; then
 					read -rp "Enter name for bookmark #$sel_id: " new_name
 				elif [ -e /dev/tty ]; then
-					read -rp "Enter name for bookmark #$sel_id: " new_name < /dev/tty
+					read -rp "Enter name for bookmark #$sel_id: " new_name </dev/tty
 				else
 					read -rp "Enter name for bookmark #$sel_id: " new_name
 				fi
@@ -959,7 +963,7 @@ interactive_list() {
 					if [ -t 0 ]; then
 						read -rp "Category (leave empty for none): " category
 					elif [ -e /dev/tty ]; then
-						read -rp "Category (leave empty for none): " category < /dev/tty
+						read -rp "Category (leave empty for none): " category </dev/tty
 					else
 						read -rp "Category (leave empty for none): " category
 					fi
@@ -969,23 +973,23 @@ interactive_list() {
 					interactive_list
 					return $?
 				fi
-				else
-					edit_bookmark "$sel_id"
-					interactive_list
-					return $?
-				fi
-				;;
-			'r'|'R') # Refresh
+			else
+				edit_bookmark "$sel_id"
 				interactive_list
 				return $?
-				;;
-			'h'|'H') # Help
-				show_help_menu
-				;;
-			'q'|'Q'|$'\x03') # Quit or Ctrl+C
-				clear
-				return 0
-				;;
+			fi
+			;;
+		'r' | 'R') # Refresh
+			interactive_list
+			return $?
+			;;
+		'h' | 'H') # Help
+			show_help_menu
+			;;
+		'q' | 'Q' | $'\x03') # Quit or Ctrl+C
+			clear
+			return 0
+			;;
 		esac
 	done
 }
@@ -994,19 +998,32 @@ interactive_list() {
 list_bookmarks() {
 	local filter_category="${1:-}"
 	local limit=""
-	local interactive=false
+	local non_interactive=false
 
-	# Check for interactive flag
+	# Check for interactive flag (explicit)
 	if [ "$filter_category" = "-i" ] || [ "$filter_category" = "--interactive" ]; then
 		interactive_list
 		local exit_code=$?
 		return $exit_code
 	fi
 
+	# Check for non-interactive flag
+	if [ "$filter_category" = "-n" ] || [ "$filter_category" = "--non-interactive" ]; then
+		non_interactive=true
+		filter_category="${2:-}"
+	fi
+
 	# Check if argument is a number (limit) or string (category filter)
 	if [ -n "$filter_category" ] && [[ "$filter_category" =~ ^[0-9]+$ ]]; then
 		limit="$filter_category"
 		filter_category=""
+	fi
+
+	# NEW: Default to interactive mode when no arguments and no explicit -n flag
+	if [ "$non_interactive" = false ] && [ -z "$filter_category" ] && [ -z "$limit" ]; then
+		interactive_list
+		local exit_code=$?
+		return $exit_code
 	fi
 
 	[ ! -f "$BOOKMARK_FILE" ] && init_bookmark_file
@@ -1030,7 +1047,7 @@ list_bookmarks() {
 
 	if [ "$named_count" -gt 0 ]; then
 		echo -e "${BLUE}📂 Named Bookmarks${NC}"
-		
+
 		# Group bookmarks by category and display hierarchically
 		local categories
 		if [ -n "$filter_category" ]; then
@@ -1038,7 +1055,7 @@ list_bookmarks() {
 		else
 			categories=$(jq -r '.bookmarks.named | group_by(.category // "Uncategorized") | .[] | .[0].category // "Uncategorized"' "$BOOKMARK_FILE" 2>/dev/null | sort)
 		fi
-		
+
 		# Display categories hierarchically
 		local prev_parts
 		prev_parts=()
@@ -1062,44 +1079,44 @@ list_bookmarks() {
 					prev_parts=()
 					continue
 				fi
-				
-			# Split category by /
-			IFS='/' read -ra parts <<< "$category"
-			
-			# Print each level of hierarchy
-			for i in "${!parts[@]}"; do
-				# Check if this level is new compared to previous category
-				if [ $i -ge ${#prev_parts[@]} ] || [ "${parts[$i]}" != "${prev_parts[$i]}" ]; then
-					local indent=""
-					for ((j=0; j<i; j++)); do
-						indent="  $indent"
-					done
-					echo -e "  $indent${GREEN}📂 ${parts[$i]}${NC}"
-				fi
-			done
-			
-			# Show bookmarks in this exact category
-			local bookmark_indent=""
-			for ((j=0; j<${#parts[@]}; j++)); do
-				bookmark_indent="  $bookmark_indent"
-			done
-				
-			jq -r --arg cat "$category" '.bookmarks.named[] | select(.category == $cat) |
+
+				# Split category by /
+				IFS='/' read -ra parts <<<"$category"
+
+				# Print each level of hierarchy
+				for i in "${!parts[@]}"; do
+					# Check if this level is new compared to previous category
+					if [ "$i" -ge ${#prev_parts[@]} ] || [ "${parts[$i]}" != "${prev_parts[$i]}" ]; then
+						local indent=""
+						for ((j = 0; j < i; j++)); do
+							indent="  $indent"
+						done
+						echo -e "  $indent${GREEN}📂 ${parts[$i]}${NC}"
+					fi
+				done
+
+				# Show bookmarks in this exact category
+				local bookmark_indent=""
+				for ((j = 0; j < ${#parts[@]}; j++)); do
+					bookmark_indent="  $bookmark_indent"
+				done
+
+				jq -r --arg cat "$category" '.bookmarks.named[] | select(.category == $cat) |
 				   "[\(.name)]  \(.path)  \(.created | split("T")[0])"' \
-				"$BOOKMARK_FILE" 2>/dev/null | while IFS= read -r line; do
-				local path
-				path=$(echo "$line" | awk '{print $2}')
-				if [ -d "$path" ]; then
-					echo -e "  $bookmark_indent  $line"
-				else
-					echo -e "  $bookmark_indent  $line ${YELLOW}⚠${NC}"
-				fi
-			done
-				
+					"$BOOKMARK_FILE" 2>/dev/null | while IFS= read -r line; do
+					local path
+					path=$(echo "$line" | awk '{print $2}')
+					if [ -d "$path" ]; then
+						echo -e "  $bookmark_indent  $line"
+					else
+						echo -e "  $bookmark_indent  $line ${YELLOW}⚠${NC}"
+					fi
+				done
+
 				# Update prev_parts for next iteration
 				prev_parts=("${parts[@]}")
 			fi
-		done <<< "$categories"
+		done <<<"$categories"
 		echo ""
 	fi
 
@@ -1140,42 +1157,77 @@ list_bookmarks() {
 
 # Show help
 show_help() {
-	echo -e "${CYAN}mlh-bookmark.sh${NC} - Quick directory bookmark system (v$VERSION)"
+	echo -e "${CYAN}bookmark${NC} - Quick directory bookmark system (v$VERSION)"
 	echo ""
-	
+
 	# Show shortcut info if alias is configured
 	if [ -n "$BOOKMARK_ALIAS" ]; then
 		echo -e "${GREEN}Shortcut:${NC} You can use '${CYAN}${BOOKMARK_ALIAS}${NC}' instead of 'bookmark'"
 		echo ""
 	fi
-	
-	echo -e "${YELLOW}USAGE:${NC}"
+
+	echo "Usage:"
 	cat <<EOF
   $COMMAND_NAME .                    Save current directory as numbered bookmark
-  $COMMAND_NAME 1                    Jump to bookmark 1
-  $COMMAND_NAME . -n <name>          Save current directory with name
-  $COMMAND_NAME . -n <name> in <cat> Save with category
+  $COMMAND_NAME <number>             Jump to numbered bookmark
   $COMMAND_NAME <name>               Jump to named bookmark
-  $COMMAND_NAME 1 -n <name>          Rename bookmark 1 to name
-  $COMMAND_NAME list                 List all bookmarks
-  $COMMAND_NAME list -i              Interactive list (arrow keys, delete, edit)
-  $COMMAND_NAME list <category>      List bookmarks in category
-  $COMMAND_NAME list <N>             List last N unnamed bookmarks
-  $COMMAND_NAME mv <name> to <cat>   Move bookmark to category
-  $COMMAND_NAME rm <name|number>     Remove a bookmark
-  $COMMAND_NAME clear                Clear all unnamed bookmarks
-  $COMMAND_NAME edit <name>          Edit bookmark (name/path/category)
-  $COMMAND_NAME find <pattern>       Search bookmarks by pattern
   $COMMAND_NAME --help               Show this help
 EOF
 	echo ""
-	echo -e "${YELLOW}EXAMPLES:${NC}"
+	echo "Commands:"
+	cat <<EOF
+  Save:
+    $COMMAND_NAME .                    Save current directory (becomes bookmark #1)
+    $COMMAND_NAME . -n <name>          Save with name
+    $COMMAND_NAME . -n <name> in <cat> Save with category
+    $COMMAND_NAME <number> -n <name>   Rename numbered bookmark to name
+
+  Navigate:
+    $COMMAND_NAME <number>             Jump to numbered bookmark (1-10)
+    $COMMAND_NAME <name>               Jump to named bookmark
+
+  List:
+    $COMMAND_NAME list                 Interactive menu (default, arrow keys)
+    $COMMAND_NAME list -n              Non-interactive list (simple output)
+    $COMMAND_NAME list <category>      Interactive list filtered by category
+    $COMMAND_NAME list -n <category>   Non-interactive list for category
+    $COMMAND_NAME list <N>             List last N unnamed bookmarks
+
+  Manage:
+    $COMMAND_NAME mv <name> to <cat>   Move bookmark to category
+    $COMMAND_NAME edit <name>          Edit bookmark (name/path/category)
+    $COMMAND_NAME rm <name|number>     Remove a bookmark
+    $COMMAND_NAME clear                Clear all numbered bookmarks
+    $COMMAND_NAME find <pattern>       Search bookmarks by pattern
+EOF
+	echo ""
+	echo "Features:"
+	cat <<EOF
+  • Stack-based numbered bookmarks (max 10, LIFO)
+  • Named bookmarks with categories
+  • Interactive menu with arrow key navigation
+  • Hierarchical categories (e.g., projects/linux/tools)
+  • Path validation with warnings (⚠ symbol)
+  • Command name conflict detection
+  • JSON storage: $BOOKMARK_FILE
+EOF
+	echo ""
+	echo "Notes:"
+	cat <<EOF
+  • Symbols: ⚠ (path missing), → (navigating), ✓ (saved)
+  • Interactive mode: Use ↑/↓ or j/k to navigate, Enter to jump, e to edit, d to delete, h for help
+  • Numbered bookmarks are LIFO (last added becomes #1)
+  • Category names support slashes for hierarchy (e.g., work/projects/java)
+  • Configure custom alias in: ~/.mylinuxhelper/mlh.conf (BOOKMARK_ALIAS=bm)
+EOF
+	echo ""
+	echo "Examples:"
 	echo -e "  ${GREEN}# Quick numbered bookmarks${NC}"
 	cat <<EOF
-  $COMMAND_NAME .                    # Save current dir (becomes bookmark 1)
+  $COMMAND_NAME .                    # Save current dir (becomes #1)
   cd /some/other/path
-  $COMMAND_NAME .                    # Save another dir (becomes bookmark 1, previous becomes 2)
-  $COMMAND_NAME 1                    # Jump to most recent bookmark
+  $COMMAND_NAME .                    # Save another (becomes #1, previous → #2)
+  $COMMAND_NAME 1                    # Jump to most recent
   $COMMAND_NAME 2                    # Jump to second most recent
 EOF
 	echo ""
@@ -1183,55 +1235,33 @@ EOF
 	cat <<EOF
   $COMMAND_NAME . -n myproject       # Save current dir as 'myproject'
   $COMMAND_NAME myproject            # Jump to myproject
-  $COMMAND_NAME 1 -n webapp          # Rename bookmark 1 to 'webapp'
+  $COMMAND_NAME 1 -n webapp          # Rename bookmark #1 to 'webapp'
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Categorized bookmarks${NC}"
 	cat <<EOF
   $COMMAND_NAME . -n mlh in projects/linux    # Save with category
-  $COMMAND_NAME 1 -n api in projects/java     # Rename with category
+  $COMMAND_NAME . -n api in projects/java     # Another category
   $COMMAND_NAME mv mlh to tools               # Move to different category
 EOF
 	echo ""
-	echo -e "  ${GREEN}# List bookmarks${NC}"
+	echo -e "  ${GREEN}# List and navigate${NC}"
 	cat <<EOF
-  $COMMAND_NAME list                 # Show all bookmarks (grouped by category)
-  $COMMAND_NAME list -i              # Interactive menu with arrow key navigation
-  $COMMAND_NAME list projects        # Show only 'projects' category
-  $COMMAND_NAME list projects/java   # Show nested category
-  $COMMAND_NAME list 5               # Show last 5 unnamed bookmarks
-EOF
-	echo ""
-	echo -e "  ${GREEN}# Remove bookmarks${NC}"
-	cat <<EOF
-  $COMMAND_NAME rm myproject         # Remove named bookmark
-  $COMMAND_NAME rm 1                 # Remove numbered bookmark
-  $COMMAND_NAME clear                # Clear all unnamed bookmarks
+  $COMMAND_NAME list                 # Interactive menu (default)
+  $COMMAND_NAME list -n              # Non-interactive list
+  $COMMAND_NAME list projects        # Interactive, filtered by category
+  $COMMAND_NAME list -n projects     # Non-interactive, filtered
+  $COMMAND_NAME list 5               # Show last 5 numbered bookmarks
 EOF
 	echo ""
 	echo -e "  ${GREEN}# Edit and search${NC}"
 	cat <<EOF
   $COMMAND_NAME edit myproject       # Edit bookmark interactively
   $COMMAND_NAME find proj            # Search bookmarks by pattern
-  $COMMAND_NAME find /home/user      # Search by path
-EOF
-	echo ""
-	echo -e "${YELLOW}FEATURES:${NC}"
-	cat <<EOF
-  • Stack-based numbered bookmarks (max 10)
-  • Named bookmarks for important locations
-  • Categorized bookmarks (hierarchical organization)
-  • Category filtering in list view
-  • Path validation and warnings
-  • Command name conflict detection
-  • JSON storage at: $BOOKMARK_FILE
-EOF
-	echo ""
-	echo -e "${YELLOW}SYMBOLS:${NC}"
-	cat <<'EOF'
-  ⚠  Path no longer exists on disk
-  →  Navigating to bookmark
-  ✓  Bookmark saved successfully
+  $COMMAND_NAME find /home           # Search by path
+  $COMMAND_NAME rm myproject         # Remove named bookmark
+  $COMMAND_NAME rm 1                 # Remove numbered bookmark
+  $COMMAND_NAME clear                # Clear all numbered bookmarks (asks confirmation)
 EOF
 }
 
@@ -1259,6 +1289,7 @@ main() {
 		# Check dependencies for actual operations
 		check_jq
 		shift
+		# Pass all remaining arguments to list_bookmarks
 		list_bookmarks "$@"
 		exit 0
 		;;

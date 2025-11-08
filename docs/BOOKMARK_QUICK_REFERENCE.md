@@ -1,198 +1,213 @@
 # Bookmark - Quick Reference Guide
 
-Hızlı dizin işaretleme ve gezinme sistemi.
+Quick directory bookmarking and navigation system.
 
-## 🚀 Hızlı Başlangıç
+## 🚀 Quick Start
 
-### Temel İşlemler
-
-```bash
-bookmark .                          # Mevcut dizini kaydet (numaralı)
-bookmark 1                          # 1 numaralı bookmark'a git
-bookmark . -n proje                 # İsimle kaydet
-bookmark proje                      # İsimli bookmark'a git
-bookmark list                       # Tümünü listele
-bookmark list -i                    # İnteraktif menü (ok tuşları)
-```
-
-## 📋 Kategori Bazlı Kullanım
-
-### Kategorilendirme
+### Basic Operations
 
 ```bash
-bookmark . -n mlh in tools          # Kategoriyle kaydet
-bookmark . -n api in projects/java  # Alt kategori
-bookmark list projects              # Kategori filtrele
-bookmark mv mlh to utils            # Kategoriye taşı
+bookmark .                          # Save current directory (numbered)
+bookmark 1                          # Jump to bookmark #1
+bookmark . -n project               # Save with name
+bookmark project                    # Jump to named bookmark
+bookmark list                       # Interactive menu (default)
+bookmark list -n                    # Non-interactive list
 ```
 
-### Arama & Düzenleme
+## 📋 Category-Based Usage
+
+### Categorization
 
 ```bash
-bookmark find java                  # Ara
-bookmark edit mlh                   # Düzenle (isim/path/kategori)
-bookmark rm proje                   # Sil
+bookmark . -n mlh in tools          # Save with category
+bookmark . -n api in projects/java  # Sub-category
+bookmark list projects              # Filter by category
+bookmark mv mlh to utils            # Move to category
 ```
 
-### Liste İşlemleri
+### Search & Edit
 
 ```bash
-bookmark list 5                     # Son 5 numaralıyı göster
-bookmark clear                      # Numaralıları temizle
+bookmark find java                  # Search
+bookmark edit mlh                   # Edit (name/path/category)
+bookmark rm project                 # Remove
 ```
 
-## ⌨️ İnteraktif Mod (bookmark list -i)
+### List Operations
 
-### Navigasyon
-
-```
-↑/↓ veya j/k                       # Gezinme
-Enter                               # Bookmark'a git
-e                                   # Düzenle
-d                                   # Sil
-h                                   # Yardım
-q                                   # Çık
+```bash
+bookmark list 5                     # Show last 5 numbered bookmarks
+bookmark clear                      # Clear all numbered bookmarks
 ```
 
-## 💡 İpuçları
+## ⌨️ Interactive Mode (bookmark list)
 
-### Hızlı Workflow
+### Navigation
 
-1. Projelere kategori ver: `bookmark . -n X in projects`
-2. İnteraktif menüyü kullan: `bookmark list -i`
-3. Ok tuşlarıyla seç ve Enter'a bas
+```
+↑/↓ or j/k                         # Navigate
+Enter                               # Jump to bookmark
+e                                   # Edit
+d                                   # Delete
+h                                   # Help
+q                                   # Quit
+```
 
-### Organizasyon
+## 💡 Tips
 
-- **Hiyerarşik kategoriler**: `aaa/bbb/ccc` şeklinde alt kategoriler
-- **İsim çakışması önleme**: Sistem komutları otomatik engellenmiş
-- **Otomatik yol validasyonu**: ⚠ silinen path'ler işaretlenir
+### Quick Workflow
 
-## 📦 Özellikler
+1. Categorize projects: `bookmark . -n X in projects`
+2. Use interactive menu: `bookmark list`
+3. Navigate with arrow keys and press Enter
 
-- **Stack-based numaralı bookmark'lar**: Max 10, LIFO (son eklenen #1 olur)
-- **İsimli bookmark'lar**: Sınırsız, kalıcı
-- **Hiyerarşik kategoriler**: Çok seviyeli organizasyon
-- **Fuzzy search**: `bookmark find` ile akıllı arama
+### Organization
+
+- **Hierarchical categories**: Sub-categories like `aaa/bbb/ccc`
+- **Name conflict prevention**: System commands automatically blocked
+- **Automatic path validation**: ⚠ marks deleted paths
+
+## 📦 Features
+
+- **Stack-based numbered bookmarks**: Max 10, LIFO (last added becomes #1)
+- **Named bookmarks**: Unlimited, persistent
+- **Hierarchical categories**: Multi-level organization
+- **Fuzzy search**: Smart search with `bookmark find`
 - **JSON storage**: `~/.mylinuxhelper/bookmarks.json`
-- **Path validation**: Silinmiş dizinler için uyarı
+- **Path validation**: Warnings for deleted directories
 
-## 📊 Komut Referansı (Alfabetik)
+## 📊 Command Reference (Alphabetical)
 
-| Komut                           | Açıklama                | Örnek                       |
-|---------------------------------|-------------------------|-----------------------------|
-| `bookmark .`                    | Mevcut dizini kaydet    | `bookmark .`                |
-| `bookmark . -n <name>`          | İsimle kaydet           | `bookmark . -n myapp`       |
-| `bookmark . -n <name> in <cat>` | Kategoriyle kaydet      | `bookmark . -n api in java` |
-| `bookmark <number>`             | Numaralı bookmark'a git | `bookmark 1`                |
-| `bookmark <name>`               | İsimli bookmark'a git   | `bookmark myapp`            |
-| `bookmark clear`                | Numaralıları temizle    | `bookmark clear`            |
-| `bookmark edit <name>`          | Düzenle                 | `bookmark edit myapp`       |
-| `bookmark find <pattern>`       | Ara                     | `bookmark find shop`        |
-| `bookmark list`                 | Tümünü listele          | `bookmark list`             |
-| `bookmark list -i`              | İnteraktif menü         | `bookmark list -i`          |
-| `bookmark list <category>`      | Kategori filtrele       | `bookmark list java`        |
-| `bookmark list <N>`             | Son N numaralı          | `bookmark list 5`           |
-| `bookmark mv <name> to <cat>`   | Kategoriye taşı         | `bookmark mv api to tools`  |
-| `bookmark rm <name\|number>`    | Sil                     | `bookmark rm oldapp`        |
-| `bookmark --help`               | Yardım                  | `bookmark --help`           |
+| Command                         | Description              | Example                     |
+|---------------------------------|--------------------------|-----------------------------|
+| `bookmark .`                    | Save current directory   | `bookmark .`                |
+| `bookmark . -n <name>`          | Save with name           | `bookmark . -n myapp`       |
+| `bookmark . -n <name> in <cat>` | Save with category       | `bookmark . -n api in java` |
+| `bookmark <number>`             | Jump to numbered         | `bookmark 1`                |
+| `bookmark <name>`               | Jump to named            | `bookmark myapp`            |
+| `bookmark clear`                | Clear numbered bookmarks | `bookmark clear`            |
+| `bookmark edit <name>`          | Edit bookmark            | `bookmark edit myapp`       |
+| `bookmark find <pattern>`       | Search bookmarks         | `bookmark find shop`        |
+| `bookmark list`                 | Interactive menu         | `bookmark list`             |
+| `bookmark list -n`              | Non-interactive list     | `bookmark list -n`          |
+| `bookmark list <category>`      | Filter by category       | `bookmark list java`        |
+| `bookmark list <N>`             | Last N numbered          | `bookmark list 5`           |
+| `bookmark mv <name> to <cat>`   | Move to category         | `bookmark mv api to tools`  |
+| `bookmark rm <name\|number>`    | Remove bookmark          | `bookmark rm oldapp`        |
+| `bookmark --help`               | Show help                | `bookmark --help`           |
 
-## 🎯 Kullanım Senaryoları
+## 🎯 Usage Scenarios
 
-### Senaryo 1: Proje Dizinleri Arasında Hızlı Geçiş
+### Scenario 1: Quick Switching Between Project Directories
 
 ```bash
-# Projeleri kategorize et
+# Categorize projects
 bookmark . -n frontend in work/projects
 bookmark . -n backend in work/projects
 bookmark . -n docs in work/projects
 
-# İnteraktif menüyle git
-bookmark list -i
+# Jump with interactive menu
+bookmark list
 ```
 
-### Senaryo 2: Geçici Dizinleri Hatırlama
+### Scenario 2: Remembering Temporary Directories
 
 ```bash
-# Hızlıca kaydet
-bookmark .                          # #1 olarak kaydedilir
+# Quick save
+bookmark .                          # Saved as #1
 
 cd /etc/nginx/sites-available
-# ... işlemleri yap ...
+# ... do work ...
 
-# Geri dön
+# Jump back
 bookmark 1
 ```
 
-### Senaryo 3: Kategorize Edilmiş Workspace
+### Scenario 3: Categorized Workspace
 
 ```bash
-# Kategorilere göre organize et
+# Organize by category
 bookmark . -n api in java/backend
 bookmark . -n web in js/frontend
 bookmark . -n mobile in kotlin/android
 
-# Kategori filtrele
-bookmark list java                  # Sadece java kategorisi
-bookmark find backend               # Backend içeren tümü
+# Filter by category
+bookmark list java                  # Only java category
+bookmark find backend               # All containing "backend"
 ```
 
-### Senaryo 4: Hızlı Arama ve Gezinme
+### Scenario 4: Quick Search and Navigation
 
 ```bash
-# Hangi projenin nerede olduğunu hatırlayamıyorsun
-bookmark find shop                  # "shop" içeren tüm bookmark'lar
-bookmark list -i                    # İnteraktif arama + seçim
+# Can't remember where a project is
+bookmark find shop                  # All bookmarks containing "shop"
+bookmark list                       # Interactive search + selection
 ```
 
 ## 🔧 Advanced Tips
 
-### Numaralı Bookmark'ı İsimli Yap
+### Convert Numbered Bookmark to Named
 
 ```bash
-cd /uzun/path/proje
-bookmark .                          # #1 olarak kaydedilir
-bookmark 1 -n myproject             # İsimli bookmark'a çevir
+cd /long/path/project
+bookmark .                          # Saved as #1
+bookmark 1 -n myproject             # Convert to named bookmark
 ```
 
-### Kategori Değiştirme
+### Change Category
 
 ```bash
-bookmark mv myproject to archive    # Kategoriye taşı
+bookmark mv myproject to archive    # Move to category
 ```
 
-### Toplu Temizlik
+### Bulk Cleanup
 
 ```bash
-bookmark clear                      # Tüm numaralı bookmark'ları sil (onay ister)
+bookmark clear                      # Delete all numbered bookmarks (asks confirmation)
 ```
+
+## 🎨 Custom Alias
+
+Create a shorter command alias (e.g., `bm`):
+
+```bash
+echo "BOOKMARK_ALIAS=bm" > ~/.mylinuxhelper/mlh.conf
+./setup.sh
+source ~/.bashrc
+
+bm .                                # Save
+bm list                             # Interactive menu
+bm project                          # Jump
+```
+
+See `docs/BOOKMARK_ALIAS_GUIDE.md` for detailed configuration.
 
 ## 🐛 Troubleshooting
 
-### Bookmark çalışmıyor
+### Bookmark not working
 
 ```bash
-./setup.sh                          # Wrapper fonksiyonunu yeniden yükle
-source ~/.bashrc                    # Shell'i reload et
+./setup.sh                          # Reload wrapper function
+source ~/.bashrc                    # Reload shell
 ```
 
-### JSON dosyası bozuldu
+### JSON file corrupted
 
 ```bash
-cat ~/.mylinuxhelper/bookmarks.json | jq .  # Validasyon
-# Bozuksa, yedekten geri yükle veya dosyayı sil (yeni oluşturulur)
+cat ~/.mylinuxhelper/bookmarks.json | jq .  # Validate
+# If corrupted, restore from backup or delete file (will be recreated)
 ```
 
-### Path artık yok uyarısı
+### Path no longer exists warning
 
 ```bash
-bookmark edit myproject             # Path'i güncelle
-# veya
-bookmark rm myproject               # Sil
+bookmark edit myproject             # Update path
+# or
+bookmark rm myproject               # Remove
 ```
 
 ---
 
-**Son Güncelleme**: 2025-11-07  
-**Versiyon**: MyLinuxHelper v1.0+
-
+**Last Updated**: 2025-11-08  
+**Version**: MyLinuxHelper v1.5.0+

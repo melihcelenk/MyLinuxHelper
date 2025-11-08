@@ -307,7 +307,7 @@ for i in {1..10}; do
 done
 
 # Count lines that look like command output (number followed by text or ► symbol)
-result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 7 -g 5 2>&1 | grep -E "(►\s+[0-9]+|^\s+[0-9]+\s+20)" | wc -l)
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" 7 -g 5 2>&1 | grep -cE "(►\s+[0-9]+|^\s+[0-9]+\s+20)" || echo "0")
 rm -f "$test_history"
 result=$(echo "$result" | tr -d ' ') # Remove whitespace
 if [ "$result" -eq 7 ]; then
@@ -366,7 +366,7 @@ for i in {1..10}; do
 	fi
 done
 
-result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" -f "docker ps" 2>&1 | grep "^\s*docker ps" | wc -l)
+result=$(HISTFILE="$test_history" HISTTIMEFORMAT='%F %T  ' bash "$HISTORY_SCRIPT" -f "docker ps" 2>&1 | grep -c "^\s*docker ps" || echo "0")
 rm -f "$test_history"
 result=$(echo "$result" | tr -d ' ')
 if [ "$result" -eq 5 ]; then

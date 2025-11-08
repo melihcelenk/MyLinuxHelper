@@ -1,0 +1,27 @@
+# MyLinuxHelper Configuration
+# Location: ~/.mylinuxhelper/mlh.conf
+# 
+# This file is sourced by MLH scripts to read user preferences.
+# Edit values below and run './setup.sh' to apply changes.
+# After editing, run: source ~/.bashrc
+
+# ============================================================================
+# BOOKMARK CONFIGURATION
+# ============================================================================
+
+# Bookmark command alias (shortcut)
+# Set this to create a shorter command alias (e.g., 'bm' instead of 'bookmark')
+# Valid values: alphanumeric and underscore only [a-zA-Z0-9_]
+# Examples: bm, b, fav, goto, marks
+# Default: "" (no alias)
+BOOKMARK_ALIAS="bm"
+
+# ============================================================================
+# FUTURE CONFIGURATIONS
+# ============================================================================
+# More configuration options will be added here as new features are developed.
+# Examples:
+#
+# HISTORY_MAX_ENTRIES=1000
+# DOCKER_DEFAULT_IMAGE="ubuntu:22.04"
+# ... and more

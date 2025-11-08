@@ -18,7 +18,6 @@ while [ -L "$SOURCE" ]; do
 	fi
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Delegate to mlh-bookmark.sh
 exec "$SCRIPT_DIR/mlh-bookmark.sh" "$@"
