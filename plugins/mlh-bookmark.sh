@@ -1001,11 +1001,17 @@ list_bookmarks() {
 	local limit=""
 	local non_interactive=false
 
-	# Check for non-interactive flag (new: -n or --non-interactive)
+	# Check for interactive flag (explicit)
+	if [ "$filter_category" = "-i" ] || [ "$filter_category" = "--interactive" ]; then
+		interactive_list
+		local exit_code=$?
+		return $exit_code
+	fi
+
+	# Check for non-interactive flag
 	if [ "$filter_category" = "-n" ] || [ "$filter_category" = "--non-interactive" ]; then
 		non_interactive=true
-		shift
-		filter_category="${1:-}"
+		filter_category="${2:-}"
 	fi
 
 	# Check if argument is a number (limit) or string (category filter)
@@ -1014,7 +1020,7 @@ list_bookmarks() {
 		filter_category=""
 	fi
 	
-	# Default to interactive mode unless -n flag is used or filter/limit is specified
+	# NEW: Default to interactive mode when no arguments and no explicit -n flag
 	if [ "$non_interactive" = false ] && [ -z "$filter_category" ] && [ -z "$limit" ]; then
 		interactive_list
 		local exit_code=$?
