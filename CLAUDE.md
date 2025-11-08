@@ -182,12 +182,15 @@ The `setup.sh` script automatically installs a wrapper function in `~/.bashrc` t
 
 Users can configure a custom shortcut/alias for the bookmark command:
 
-- Configuration file: `~/.mylinuxhelper/bookmark-alias.conf`
+- Configuration file: `~/.mylinuxhelper/mlh.conf`
 - Format: `BOOKMARK_ALIAS=bm` (or any alphanumeric name)
-- Example config: `bookmark-alias.conf.example` in repository root
 - After configuration, run `setup.sh` and `source ~/.bashrc`
 - Aliases delegate to the main bookmark function (full feature support)
-- Command conflict detection prevents overriding system commands
+- **Important**: `setup.sh` creates both a symlink AND a wrapper function. The function takes precedence and enables
+  `cd` functionality in interactive mode. Even if a symlink exists, the function is added to `.bashrc` because functions
+  execute before commands/symlinks.
+- Command conflict detection: Real system commands are warned about, but the function is still added (functions take
+  precedence)
 - Help dynamically shows alias name in examples when configured
 - See `docs/BOOKMARK_ALIAS_GUIDE.md` for detailed setup instructions
 
@@ -248,6 +251,8 @@ The test suite uses a standardized framework:
 bash tests/test
 
 # Run specific test suite
+bash tests/test bookmark/mlh-bookmark
+# Or use legacy format (still works)
 bash tests/test mlh-bookmark
 
 # Test output format
@@ -263,9 +268,10 @@ bash tests/test mlh-bookmark
 ```bash
 tests/
 ├── test                              # Main test runner
-├── test-mlh-bookmark.sh             # Bookmark feature tests (80 tests - Phase 1, 2 & 3 + bug fixes)
-├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
-├── test-bookmark-alias-integration.sh # Alias integration tests (11 tests)
+├── bookmark/
+│   ├── test-mlh-bookmark.sh             # Bookmark feature tests (80 tests - Phase 1, 2 & 3 + bug fixes)
+│   ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
+│   └── test-bookmark-alias-integration.sh # Alias integration tests (12 tests)
 ├── test-mlh-history.sh              # History feature tests
 ├── test-mlh-json.sh                 # JSON validation tests
 └── ...
@@ -371,10 +377,11 @@ When releasing a new version:
 │   ├── isjsonvalid.sh  # Centralized JSON validation engine
 │   └── ll.sh           # ls -la shortcut
 └── tests/
-    ├── test                              # Main test runner framework (285 tests total)
-    ├── test-mlh-bookmark.sh             # Bookmark tests (80 tests, requires jq)
-    ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
-    ├── test-bookmark-alias-integration.sh # Alias integration tests (11 tests)
+    ├── test                              # Main test runner framework (285+ tests total)
+    ├── bookmark/
+    │   ├── test-mlh-bookmark.sh             # Bookmark tests (80 tests, requires jq)
+    │   ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
+    │   └── test-bookmark-alias-integration.sh # Alias integration tests (12 tests)
     ├── test-mlh-history.sh              # History tests (34 tests)
     ├── test-mlh-json.sh                 # JSON validation tests (18 tests)
     ├── test-mlh-docker.sh               # Docker tests (18 tests)

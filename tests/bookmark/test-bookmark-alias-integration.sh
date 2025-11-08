@@ -45,7 +45,6 @@ setup_test_env() {
 	mkdir -p "$TEST_HOME/.local/bin"
 	export HOME="$TEST_HOME"
 	export MLH_CONFIG_DIR="$TEST_HOME/.mylinuxhelper"
-	# Use mlh.conf (new format) instead of bookmark-alias.conf (old format)
 	export MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
 	
 	# Create minimal bashrc

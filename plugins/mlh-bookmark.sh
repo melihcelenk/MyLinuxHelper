@@ -31,19 +31,14 @@ readonly VERSION="1.0.0"
 readonly MLH_CONFIG_DIR="${HOME}/.mylinuxhelper"
 readonly BOOKMARK_FILE="${MLH_BOOKMARK_FILE:-$MLH_CONFIG_DIR/bookmarks.json}"
 readonly MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
-readonly OLD_ALIAS_CONFIG="$MLH_CONFIG_DIR/bookmark-alias.conf"
 readonly MAX_UNNAMED_BOOKMARKS=10
 
-# Load alias configuration from mlh.conf (or legacy bookmark-alias.conf)
+# Load alias configuration from mlh.conf
 BOOKMARK_ALIAS=""
 if [ -f "$MLH_CONFIG_FILE" ]; then
 	# Source the main config file to get BOOKMARK_ALIAS value
 	# shellcheck source=/dev/null
 	source "$MLH_CONFIG_FILE" 2>/dev/null || true
-elif [ -f "$OLD_ALIAS_CONFIG" ]; then
-	# Backward compatibility: read from old config file
-	# shellcheck source=/dev/null
-	source "$OLD_ALIAS_CONFIG" 2>/dev/null || true
 fi
 
 # Determine command name for help messages (alias if configured, otherwise 'bookmark')

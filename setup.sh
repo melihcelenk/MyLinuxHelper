@@ -11,7 +11,6 @@ BASHRC="$HOME/.bashrc"
 PROFILE="$HOME/.profile"
 MLH_CONFIG_DIR="$HOME/.mylinuxhelper"
 MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
-OLD_ALIAS_CONFIG="$MLH_CONFIG_DIR/bookmark-alias.conf"
 
 # Colors for output
 YELLOW='\033[1;33m'
@@ -21,29 +20,6 @@ NC='\033[0m' # No Color
 # Track if bashrc was updated (for notification at end)
 BASHRC_UPDATED=0
 
-# Auto-migrate old config to new format
-if [ ! -f "$MLH_CONFIG_FILE" ] && [ -f "$OLD_ALIAS_CONFIG" ]; then
-	echo "Migrating bookmark-alias.conf to mlh.conf..."
-	mkdir -p "$MLH_CONFIG_DIR"
-	
-	# Read old config
-	BOOKMARK_ALIAS=""
-	# shellcheck source=/dev/null
-	source "$OLD_ALIAS_CONFIG" 2>/dev/null || true
-	
-	# Create new config with proper format
-	cat > "$MLH_CONFIG_FILE" << EOF
-# MyLinuxHelper Configuration
-# This file is sourced by MLH scripts to read user preferences.
-
-# Bookmark command alias (shortcut)
-BOOKMARK_ALIAS="${BOOKMARK_ALIAS}"
-EOF
-	
-	# Backup old config
-	mv "$OLD_ALIAS_CONFIG" "${OLD_ALIAS_CONFIG}.bak"
-	echo "✅ Migrated to mlh.conf (old config backed up as bookmark-alias.conf.bak)"
-fi
 
 # Load MLH configuration
 BOOKMARK_ALIAS=""
