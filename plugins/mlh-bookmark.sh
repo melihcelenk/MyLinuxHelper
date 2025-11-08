@@ -1213,6 +1213,15 @@ EOF
   • JSON storage: $BOOKMARK_FILE
 EOF
 	echo ""
+	echo "Notes:"
+	cat <<EOF
+  • Symbols: ⚠ (path missing), → (navigating), ✓ (saved)
+  • Interactive mode: Use ↑/↓ or j/k to navigate, Enter to jump, e to edit, d to delete, h for help
+  • Numbered bookmarks are LIFO (last added becomes #1)
+  • Category names support slashes for hierarchy (e.g., work/projects/java)
+  • Configure custom alias in: ~/.mylinuxhelper/mlh.conf (BOOKMARK_ALIAS=bm)
+EOF
+	echo ""
 	echo "Examples:"
 	echo -e "  ${GREEN}# Quick numbered bookmarks${NC}"
 	cat <<EOF
@@ -1254,15 +1263,6 @@ EOF
   $COMMAND_NAME rm myproject         # Remove named bookmark
   $COMMAND_NAME rm 1                 # Remove numbered bookmark
   $COMMAND_NAME clear                # Clear all numbered bookmarks (asks confirmation)
-EOF
-	echo ""
-	echo "Notes:"
-	cat <<EOF
-  • Symbols: ⚠ (path missing), → (navigating), ✓ (saved)
-  • Interactive mode: Use ↑/↓ or j/k to navigate, Enter to jump, e to edit, d to delete, h for help
-  • Numbered bookmarks are LIFO (last added becomes #1)
-  • Category names support slashes for hierarchy (e.g., work/projects/java)
-  • Configure custom alias in: ~/.mylinuxhelper/mlh.conf (BOOKMARK_ALIAS=bm)
 EOF
 }
 
