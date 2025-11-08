@@ -9,9 +9,27 @@ PLUGINS_DIR="$ROOT_DIR/plugins"
 LOCAL_BIN="$HOME/.local/bin"
 BASHRC="$HOME/.bashrc"
 PROFILE="$HOME/.profile"
+MLH_CONFIG_DIR="$HOME/.mylinuxhelper"
+MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
+
+# Colors for output
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Track if bashrc was updated (for notification at end)
+BASHRC_UPDATED=0
+
+# Load MLH configuration
+BOOKMARK_ALIAS=""
+if [ -f "$MLH_CONFIG_FILE" ]; then
+	# shellcheck source=/dev/null
+	source "$MLH_CONFIG_FILE" 2>/dev/null || true
+fi
 
 # 1) Ensure ~/.local/bin exists and added to PATH for future shells
 mkdir -p "$LOCAL_BIN"
+# shellcheck disable=SC2016
 ADD_LINE='export PATH="$HOME/.local/bin:$PATH"'
 grep -Fq "$ADD_LINE" "$BASHRC" 2>/dev/null || {
 	echo "$ADD_LINE" >>"$BASHRC"
@@ -39,6 +57,7 @@ mlh() {
 }
 EOF
 	echo "Added mlh wrapper function to ~/.bashrc"
+	BASHRC_UPDATED=1
 fi
 
 # 1c) Add bookmark wrapper function for cd functionality
@@ -51,33 +70,75 @@ if ! grep -Fq "$BOOKMARK_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
 bookmark() {
   local cmd="$1"
 
-  # Special handling for interactive list - use fixed temp file (ranger-style)
-  if [ "$cmd" = "list" ] && ( [ "$2" = "-i" ] || [ "$2" = "--interactive" ] ); then
-    # Use fixed temp file path (no arguments, no env vars needed)
-    local tmp_cd_file="/tmp/bookmark-cd-${USER:-$(id -un)}"
-    rm -f "$tmp_cd_file"
+  # Special handling for interactive list - use unique temp file per invocation
+  # PR branch: bookmark list defaults to interactive mode (no -i flag needed)
+  # Handle both explicit -i flag and default interactive mode
+  if [ "$cmd" = "list" ]; then
+    # Check if this is non-interactive mode (explicit -n flag)
+    if [ "$2" = "-n" ] || [ "$2" = "--non-interactive" ]; then
+      # Non-interactive mode - just pass through
+      command bookmark "$@"
+      return $?
+    fi
+    
+    # Check if second argument is a number (limit) - this is also non-interactive
+    # shellcheck disable=SC2076
+    if [ -n "$2" ] && [[ "$2" =~ ^[0-9]+$ ]]; then
+      # Number limit - non-interactive mode, pass through
+      command bookmark "$@"
+      return $?
+    fi
+    
+    # All other cases: default interactive mode, explicit -i flag, or category filter
+    # All of these should use interactive mode with cd support
+    # Use unique temp file per invocation (more reliable than fixed path)
+    # This ensures no race conditions between multiple invocations
+    local tmp_cd_file
+    local user_name
+    user_name="${USER:-$(id -un)}"
+    tmp_cd_file=$(mktemp "/tmp/bookmark-cd-${user_name}-XXXXXX" 2>/dev/null) || {
+      # Fallback to fixed path if mktemp fails
+      tmp_cd_file="/tmp/bookmark-cd-${user_name}"
+      rm -f "$tmp_cd_file"
+    }
+    
+    # Export temp file path to plugin via environment variable
+    # Plugin will check this and use it if available
+    export MLH_BOOKMARK_CD_FILE="$tmp_cd_file"
 
-    # Run interactive mode - it will write to the fixed path if user selects bookmark
+    # Clean up any leftover sequence files from previous sessions
+    # This is important for Ctrl+C interrupted sessions
+    rm -f "${tmp_cd_file}".* 2>/dev/null || true
+
+    # Run interactive mode - each invocation works independently
+    # User selects one bookmark, interactive mode exits, cd happens
     command bookmark "$@"
     local exit_code=$?
 
-    # Check if a cd command was written to temp file
-    if [ -f "$tmp_cd_file" ] && [ -s "$tmp_cd_file" ]; then
-      # Execute the cd command
-      source "$tmp_cd_file" 2>/dev/null
-      rm -f "$tmp_cd_file"
+    # Wait a bit for plugin to finish writing
+    sleep 0.1
+
+    # Source the sequence file (plugin writes .1 for first selection)
+    if [ -f "${tmp_cd_file}.1" ]; then
+      source "${tmp_cd_file}.1" 2>/dev/null || true
     fi
+    
+    # Clean up all temp files (base + sequences) and unset env var
+    rm -f "$tmp_cd_file" "${tmp_cd_file}".* 2>/dev/null || true
+    unset MLH_BOOKMARK_CD_FILE
 
     return $exit_code
   fi
 
   # For jumping to bookmarks (number or name), eval the output to enable cd
+  # shellcheck disable=SC2076
   if [[ "$cmd" =~ ^[0-9]+$ ]] || ( [ -n "$cmd" ] && [ "$cmd" != "." ] && [ "$cmd" != "list" ] && [ "$cmd" != "mv" ] && [ "$cmd" != "--help" ] && [ "$cmd" != "-h" ] && [ "$cmd" != "--version" ] && [ "$cmd" != "-v" ] ); then
     # This might be a bookmark name/number - check if it produces a cd command
     local output
     output=$(command bookmark "$@" 2>&1)
     if echo "$output" | grep -q "^cd "; then
       # Extract and execute the cd command
+      # shellcheck disable=SC2294
       eval "$(echo "$output" | grep "^cd ")"
       # Show the rest of the output (without the cd line)
       echo "$output" | grep -v "^cd " >&2
@@ -93,6 +154,55 @@ bookmark() {
 }
 EOF
 	echo "Added bookmark wrapper function to ~/.bashrc"
+	BASHRC_UPDATED=1
+fi
+
+# 1d) Add bookmark alias wrapper if configured
+if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+	# Validate alias name (alphanumeric only, no spaces or special chars)
+	# shellcheck disable=SC2076
+	if [[ ! "$BOOKMARK_ALIAS" =~ ^[a-zA-Z0-9_]+$ ]]; then
+		echo -e "${YELLOW}Warning: Invalid alias name '$BOOKMARK_ALIAS' in config (must be alphanumeric)${NC}"
+		BOOKMARK_ALIAS=""
+	else
+		# Check for command conflicts - but allow our own symlink
+		# Functions take precedence over commands, so we can safely add the function
+		# even if a symlink exists (the function will be called first)
+		conflicting_cmd=""
+		if command -v "$BOOKMARK_ALIAS" >/dev/null 2>&1; then
+			conflicting_cmd=$(command -v "$BOOKMARK_ALIAS")
+			# Check if it's our own symlink - if so, it's OK to add the function
+			if [ -L "$conflicting_cmd" ]; then
+				symlink_target=$(readlink -f "$conflicting_cmd" 2>/dev/null || readlink "$conflicting_cmd" 2>/dev/null || echo "")
+				# If symlink points to our plugin, it's OK - function will override it
+				if echo "$symlink_target" | grep -q "mlh-bookmark.sh"; then
+					conflicting_cmd=""
+				fi
+			fi
+			# If it's a real command (not our symlink), warn but still allow function
+			# Function will take precedence, but user should know about the conflict
+			if [ -n "$conflicting_cmd" ]; then
+				echo -e "${YELLOW}Warning: Command '$BOOKMARK_ALIAS' exists at '$conflicting_cmd'${NC}"
+				echo -e "${YELLOW}Function will take precedence, but consider removing the conflicting command${NC}"
+			fi
+		fi
+
+		# Add the wrapper function (functions take precedence over commands/symlinks)
+		ALIAS_WRAPPER_MARKER="# MyLinuxHelper - $BOOKMARK_ALIAS alias wrapper"
+		if ! grep -Fq "$ALIAS_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
+			cat >>"$BASHRC" <<EOF
+
+# MyLinuxHelper - $BOOKMARK_ALIAS alias wrapper
+# Shortcut alias for bookmark command (delegates to bookmark function for cd support)
+# NOTE: This function takes precedence over the symlink, enabling cd functionality
+$BOOKMARK_ALIAS() {
+  bookmark "\$@"
+}
+EOF
+			echo "Added $BOOKMARK_ALIAS alias wrapper to ~/.bashrc"
+			BASHRC_UPDATED=1
+		fi
+	fi
 fi
 
 # 2) Make scripts executable
@@ -110,6 +220,11 @@ declare -A LINKS=(
 	["$LOCAL_BIN/mlh"]="$PLUGINS_DIR/mlh.sh"
 	["$LOCAL_BIN/search"]="$PLUGINS_DIR/search.sh"
 )
+
+# Add bookmark alias symlink if configured
+if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+	LINKS["$LOCAL_BIN/$BOOKMARK_ALIAS"]="$PLUGINS_DIR/mlh-bookmark.sh"
+fi
 
 for link in "${!LINKS[@]}"; do
 	target="${LINKS[$link]}"
@@ -130,6 +245,12 @@ if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; t
 		["/usr/local/bin/mlh"]="$PLUGINS_DIR/mlh.sh"
 		["/usr/local/bin/search"]="$PLUGINS_DIR/search.sh"
 	)
+
+	# Add bookmark alias to usr/local if configured
+	if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+		ULINKS["/usr/local/bin/$BOOKMARK_ALIAS"]="$PLUGINS_DIR/mlh-bookmark.sh"
+	fi
+
 	for link in "${!ULINKS[@]}"; do
 		target="${ULINKS[$link]}"
 		sudo rm -f "$link" 2>/dev/null || true
@@ -146,7 +267,7 @@ for bin in i isjsonvalid ll linux mlh search; do
 	fi
 done
 
-echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux, mlh, search"
+echo "✅ Setup complete. Commands: i, isjsonvalid, ll, linux, mlh, search${BOOKMARK_ALIAS:+, $BOOKMARK_ALIAS}"
 echo ""
 echo "Examples:"
 echo "  linux mycontainer                    # Create ephemeral container (default)"
@@ -165,6 +286,15 @@ echo "  mlh json --isvalid data.json         # Detailed JSON validation"
 echo "  mlh json get name from users.json    # Search JSON with fuzzy matching"
 echo ""
 echo "  ll /var/log                          # List directory contents with details"
+
+# Show warning if bashrc was updated
+if [ "$BASHRC_UPDATED" -eq 1 ]; then
+	echo ""
+	echo -e "${YELLOW}⚠️  Important: Shell configuration updated!${NC}"
+	echo -e "${YELLOW}   Run this command to apply changes in current session:${NC}"
+	echo -e "${CYAN}   source ~/.bashrc${NC}"
+	echo ""
+fi
 
 if [ "$need_reload" -eq 1 ] && [ -t 1 ] && [ -z "${MLH_RELOADED:-}" ]; then
 	echo "↻ Opening a fresh login shell so commands are available immediately..."

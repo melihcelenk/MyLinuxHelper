@@ -30,6 +30,9 @@ The setup script automatically:
 - Installs wrapper functions in `~/.bashrc`:
     - `mlh()` wrapper: Ensures current session history is visible
     - `bookmark()` wrapper: Enables `cd` functionality for bookmark navigation
+    - `<alias>()` wrapper: Creates custom alias if configured (e.g., `bm()`)
+- Creates symlink for bookmark alias if configured
+- Shows warning message when `.bashrc` is updated (reminds user to run `source ~/.bashrc`)
 - Re-execs the shell if commands aren't immediately available
 
 ## Architecture
@@ -175,6 +178,22 @@ The `setup.sh` script automatically installs a wrapper function in `~/.bashrc` t
 - The script outputs a `cd` command that the wrapper executes in the parent shell
 - Other commands (`list`, `mv`, save operations) pass through normally
 
+**Alias Support:**
+
+Users can configure a custom shortcut/alias for the bookmark command:
+
+- Configuration file: `~/.mylinuxhelper/mlh.conf`
+- Format: `BOOKMARK_ALIAS=bm` (or any alphanumeric name)
+- After configuration, run `setup.sh` and `source ~/.bashrc`
+- Aliases delegate to the main bookmark function (full feature support)
+- **Important**: `setup.sh` creates both a symlink AND a wrapper function. The function takes precedence and enables
+  `cd` functionality in interactive mode. Even if a symlink exists, the function is added to `.bashrc` because functions
+  execute before commands/symlinks.
+- Command conflict detection: Real system commands are warned about, but the function is still added (functions take
+  precedence)
+- Help dynamically shows alias name in examples when configured
+- See `docs/BOOKMARK_ALIAS_GUIDE.md` for detailed setup instructions
+
 **Storage format:**
 
 ```json
@@ -232,6 +251,8 @@ The test suite uses a standardized framework:
 bash tests/test
 
 # Run specific test suite
+bash tests/test bookmark/mlh-bookmark
+# Or use legacy format (still works)
 bash tests/test mlh-bookmark
 
 # Test output format
@@ -246,10 +267,13 @@ bash tests/test mlh-bookmark
 
 ```bash
 tests/
-├── test                      # Main test runner
-├── test-mlh-bookmark.sh     # Bookmark feature tests (72 tests - Phase 1, 2 & 3 + bug fixes)
-├── test-mlh-history.sh      # History feature tests
-├── test-mlh-json.sh         # JSON validation tests
+├── test                              # Main test runner
+├── bookmark/
+│   ├── test-mlh-bookmark.sh             # Bookmark feature tests (80 tests - Phase 1, 2 & 3 + bug fixes)
+│   ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
+│   └── test-bookmark-alias-integration.sh # Alias integration tests (12 tests)
+├── test-mlh-history.sh              # History feature tests
+├── test-mlh-json.sh                 # JSON validation tests
 └── ...
 ```
 
@@ -326,8 +350,53 @@ When releasing a new version:
    readonly VERSION="X.Y.Z"
    readonly VERSION_DATE="DD.MM.YYYY"
    ```
-2. Commit and push to main branch
-3. Users can update via `mlh update`
+2. Create/update `RELEASE_NOTES_vX.Y.Z.md` with user-facing changes only
+3. Commit and push to main branch
+4. Users can update via `mlh update`
+
+### Release Notes Guidelines
+
+**Important:** Release notes should focus on **user-facing changes** since the last release tag, not internal bug fixes or refactoring.
+
+#### What to Include:
+- ✅ **New features** that users can see or use
+- ✅ **Behavior changes** that affect user workflow
+- ✅ **UI/UX improvements** (interactive modes, better output formatting)
+- ✅ **Configuration changes** (new config options, migration requirements)
+- ✅ **Breaking changes** (if any)
+- ✅ **Documentation updates** (new guides, improved examples)
+
+#### What to Exclude:
+- ❌ **Internal bug fixes** that don't change user-visible behavior
+- ❌ **Code refactoring** without functional changes
+- ❌ **Test improvements** (unless they fix user-reported issues)
+- ❌ **ShellCheck/formatting fixes** (code quality improvements)
+- ❌ **Internal tooling changes** (CI/CD, development workflow)
+
+#### Process:
+1. Identify the last release tag (e.g., `v1.4.1`)
+2. Review commits since that tag: `git log v1.4.1..HEAD --oneline`
+3. Filter for user-facing changes only
+4. Organize changes by category (Features, Enhancements, Bug Fixes, etc.)
+5. Update release notes file: `RELEASE_NOTES_vX.Y.Z.md`
+6. Update version number in `plugins/mlh-version.sh`
+7. Update release date in release notes
+
+**Example:**
+```bash
+# Check commits since last release
+git log v1.4.1..HEAD --oneline
+
+# Focus on commits that change user experience:
+# - "feat: Add new feature X"
+# - "Improve user workflow Y"
+# - "Fix user-visible bug Z"
+
+# Ignore internal changes:
+# - "Fix ShellCheck warnings"
+# - "Refactor internal function"
+# - "Update test coverage"
+```
 
 ## File Structure
 
@@ -353,12 +422,15 @@ When releasing a new version:
 │   ├── isjsonvalid.sh  # Centralized JSON validation engine
 │   └── ll.sh           # ls -la shortcut
 └── tests/
-    ├── test                      # Main test runner framework (238 tests total)
-    ├── test-mlh-bookmark.sh     # Bookmark tests (72 tests, requires jq)
-    ├── test-mlh-history.sh      # History tests (34 tests)
-    ├── test-mlh-json.sh         # JSON validation tests (18 tests)
-    ├── test-mlh-docker.sh       # Docker tests (18 tests)
-    ├── test-current-session.sh  # Session history tests (1 test)
-    ├── test-time-debug.sh       # Time parsing tests (4 tests)
+    ├── test                              # Main test runner framework (285+ tests total)
+    ├── bookmark/
+    │   ├── test-mlh-bookmark.sh             # Bookmark tests (80 tests, requires jq)
+    │   ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
+    │   └── test-bookmark-alias-integration.sh # Alias integration tests (12 tests)
+    ├── test-mlh-history.sh              # History tests (34 tests)
+    ├── test-mlh-json.sh                 # JSON validation tests (18 tests)
+    ├── test-mlh-docker.sh               # Docker tests (18 tests)
+    ├── test-current-session.sh          # Session history tests (1 test)
+    ├── test-time-debug.sh               # Time parsing tests (4 tests)
     └── ...
 ```

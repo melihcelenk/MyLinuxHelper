@@ -14,8 +14,10 @@
 
 set -euo pipefail
 
-readonly VERSION="1.4.1"
-readonly VERSION_DATE="20.10.2025"
+readonly VERSION="1.5.0"
+# shellcheck disable=SC2034
+readonly VERSION_DATE="08.11.2025"
+# shellcheck disable=SC2034
 readonly FIRST_RELEASE_DATE="11.10.2025"
 readonly GITHUB_REPO="melihcelenk/MyLinuxHelper"
 readonly INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/get-mlh.sh"
@@ -221,7 +223,7 @@ update_to_latest() {
 		echo ""
 		echo "Reloading shell to apply changes..."
 		echo ""
-		
+
 		# Reload the shell to apply new functions and updates
 		exec bash -l
 	else
