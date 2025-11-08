@@ -18,12 +18,12 @@ else
 	YELLOW='\033[1;33m'
 	CYAN='\033[0;36m'
 	NC='\033[0m'
-	
+
 	print_test_result() {
 		local test_name="$1"
 		local result="$2"
 		local message="${3:-}"
-		
+
 		if [ "$result" = "PASS" ]; then
 			echo -e "${GREEN}✓ PASS${NC}: $test_name"
 		elif [ "$result" = "SKIP" ]; then
@@ -60,7 +60,7 @@ setup_test_env
 #
 
 # Test 1: Config file can be sourced and read
-echo "BOOKMARK_ALIAS=bm" > "$MLH_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=bm" >"$MLH_CONFIG_FILE"
 if source "$MLH_CONFIG_FILE" 2>/dev/null && [ "$BOOKMARK_ALIAS" = "bm" ]; then
 	print_test_result "Config file can be sourced and read" "PASS"
 else
@@ -68,7 +68,7 @@ else
 fi
 
 # Test 2: Empty alias (no shortcut)
-echo "" > "$MLH_CONFIG_FILE"
+echo "" >"$MLH_CONFIG_FILE"
 BOOKMARK_ALIAS=""
 source "$MLH_CONFIG_FILE" 2>/dev/null || true
 if [ -z "$BOOKMARK_ALIAS" ]; then
@@ -78,7 +78,7 @@ else
 fi
 
 # Test 3: Custom alias
-echo "BOOKMARK_ALIAS=bm" > "$MLH_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=bm" >"$MLH_CONFIG_FILE"
 BOOKMARK_ALIAS=""
 source "$MLH_CONFIG_FILE" 2>/dev/null
 if [ "$BOOKMARK_ALIAS" = "bm" ]; then
@@ -109,7 +109,7 @@ else
 fi
 
 # Test 6: Help adapts to different alias names (fav)
-echo "BOOKMARK_ALIAS=fav" > "$MLH_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=fav" >"$MLH_CONFIG_FILE"
 output=$("$ROOT_DIR/plugins/mlh-bookmark.sh" --help 2>&1 || true)
 if echo "$output" | grep -q "fav ."; then
 	print_test_result "Help adapts to different alias names (fav)" "PASS"
@@ -118,7 +118,7 @@ else
 fi
 
 # Test 7: Help shows 'bookmark' when no alias configured
-echo "" > "$MLH_CONFIG_FILE"
+echo "" >"$MLH_CONFIG_FILE"
 output=$("$ROOT_DIR/plugins/mlh-bookmark.sh" --help 2>&1 || true)
 if echo "$output" | grep -q "bookmark \."; then
 	print_test_result "Help shows 'bookmark' when no alias configured" "PASS"
@@ -243,8 +243,8 @@ fi
 #
 
 # Test 20: Config file with comments works
-echo "# Bookmark alias configuration" > "$MLH_CONFIG_FILE"
-echo "BOOKMARK_ALIAS=bm" >> "$MLH_CONFIG_FILE"
+echo "# Bookmark alias configuration" >"$MLH_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=bm" >>"$MLH_CONFIG_FILE"
 BOOKMARK_ALIAS=""
 source "$MLH_CONFIG_FILE" 2>/dev/null || true
 if [ "$BOOKMARK_ALIAS" = "bm" ]; then
@@ -254,8 +254,8 @@ else
 fi
 
 # Test 21: Config handles whitespace (bash trims it naturally)
-echo "BOOKMARK_ALIAS=bm" > "$MLH_CONFIG_FILE"
-echo "  " >> "$MLH_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=bm" >"$MLH_CONFIG_FILE"
+echo "  " >>"$MLH_CONFIG_FILE"
 BOOKMARK_ALIAS=""
 source "$MLH_CONFIG_FILE" 2>/dev/null || true
 # Config should still work with extra whitespace/blank lines
@@ -266,7 +266,7 @@ else
 fi
 
 # Test 22: Config with export statement
-echo "export BOOKMARK_ALIAS=bm" > "$MLH_CONFIG_FILE"
+echo "export BOOKMARK_ALIAS=bm" >"$MLH_CONFIG_FILE"
 BOOKMARK_ALIAS=""
 source "$MLH_CONFIG_FILE" 2>/dev/null || true
 if [ "$BOOKMARK_ALIAS" = "bm" ]; then
@@ -276,9 +276,9 @@ else
 fi
 
 # Test 23: Config with multiple variables (only BOOKMARK_ALIAS matters)
-echo "SOME_VAR=test" > "$MLH_CONFIG_FILE"
-echo "BOOKMARK_ALIAS=bm" >> "$MLH_CONFIG_FILE"
-echo "OTHER_VAR=value" >> "$MLH_CONFIG_FILE"
+echo "SOME_VAR=test" >"$MLH_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=bm" >>"$MLH_CONFIG_FILE"
+echo "OTHER_VAR=value" >>"$MLH_CONFIG_FILE"
 BOOKMARK_ALIAS=""
 source "$MLH_CONFIG_FILE" 2>/dev/null || true
 if [ "$BOOKMARK_ALIAS" = "bm" ]; then

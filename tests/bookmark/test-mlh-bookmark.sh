@@ -251,7 +251,13 @@ fi
 
 # Test 23: List last N bookmarks
 result=$(bash "$PLUGIN_SCRIPT" list 2 2>&1)
-count=$(echo "$result" | grep -c "$TEST_DIR" || echo "0")
+# Check if any test directory appears in the output
+count=0
+for test_dir in "$TEST_DIR_1" "$TEST_DIR_2" "$TEST_DIR_3"; do
+	if echo "$result" | grep -q "$test_dir"; then
+		count=$((count + 1))
+	fi
+done
 if [ "$count" -ge 1 ]; then
 	print_test_result "bookmark list N shows limited results" "PASS"
 else
@@ -343,7 +349,7 @@ if echo "$result" | grep -qi "saved"; then
 else
 	print_test_result "Bookmark path with spaces handled correctly" "FAIL" "Failed to save path with spaces"
 fi
-cd "$TEST_DIR_1" || exit 1  # Return to valid directory before cleanup
+cd "$TEST_DIR_1" || exit 1 # Return to valid directory before cleanup
 rm -rf "$SPECIAL_DIR"
 
 # Test 32: Very long bookmark name
@@ -458,7 +464,7 @@ fi
 
 # Test 43: Jump command outputs valid cd command for shell sourcing
 cd "$TEST_DIR_1" || exit 1
-bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1  # Create a bookmark
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1 # Create a bookmark
 jump_output=$(bash "$PLUGIN_SCRIPT" 1 2>&1)
 if echo "$jump_output" | grep -q '^cd "'; then
 	print_test_result "Jump command outputs valid cd command" "PASS"
@@ -468,7 +474,7 @@ fi
 
 # Test 44: Jump command output is eval-safe (properly quoted path)
 cd "$TEST_DIR_WITH_SPACES" || exit 1
-bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1  # Save path with spaces
+bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1 # Save path with spaces
 jump_output=$(bash "$PLUGIN_SCRIPT" 1 2>&1)
 cd_line=$(echo "$jump_output" | grep '^cd ')
 if [ -n "$cd_line" ]; then
@@ -532,7 +538,7 @@ fi
 # Test 50: Remove numbered bookmark and verify re-numbering
 cd "$TEST_DIR_1" || exit 1
 # Clear unnamed bookmarks first to have clean state
-jq '.bookmarks.unnamed = []' "$TEST_BOOKMARK_FILE" > "$TEST_BOOKMARK_FILE.tmp" && mv "$TEST_BOOKMARK_FILE.tmp" "$TEST_BOOKMARK_FILE"
+jq '.bookmarks.unnamed = []' "$TEST_BOOKMARK_FILE" >"$TEST_BOOKMARK_FILE.tmp" && mv "$TEST_BOOKMARK_FILE.tmp" "$TEST_BOOKMARK_FILE"
 # Create 3 numbered bookmarks
 bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
 cd "$TEST_DIR_2" || exit 1
@@ -554,7 +560,7 @@ if [ "$count" -eq 2 ]; then
 	id1_exists=$(jq -e '.bookmarks.unnamed[] | select(.id == 1)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1 && echo "yes" || echo "no")
 	id2_exists=$(jq -e '.bookmarks.unnamed[] | select(.id == 2)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1 && echo "yes" || echo "no")
 	id3_exists=$(jq -e '.bookmarks.unnamed[] | select(.id == 3)' "$TEST_BOOKMARK_FILE" >/dev/null 2>&1 && echo "yes" || echo "no")
-	
+
 	if [ "$id1_exists" = "yes" ] && [ "$id2_exists" = "yes" ] && [ "$id3_exists" = "no" ]; then
 		print_test_result "Numbered bookmark removed from JSON" "PASS"
 	else
@@ -573,7 +579,7 @@ else
 fi
 
 # Test 53: Clear command with no unnamed bookmarks
-jq '.bookmarks.unnamed = []' "$TEST_BOOKMARK_FILE" > "$TEST_BOOKMARK_FILE.tmp" && mv "$TEST_BOOKMARK_FILE.tmp" "$TEST_BOOKMARK_FILE"
+jq '.bookmarks.unnamed = []' "$TEST_BOOKMARK_FILE" >"$TEST_BOOKMARK_FILE.tmp" && mv "$TEST_BOOKMARK_FILE.tmp" "$TEST_BOOKMARK_FILE"
 result=$(echo "n" | bash "$PLUGIN_SCRIPT" clear 2>&1)
 if echo "$result" | grep -qi "no unnamed bookmarks"; then
 	print_test_result "Clear command with no unnamed bookmarks" "PASS"
@@ -781,10 +787,10 @@ if [ -f "$setup_script" ]; then
 	# 5. Source the temp file if exists: source "$tmp_cd_file"
 	# 6. Clean up: rm -f "$tmp_cd_file" and unset MLH_BOOKMARK_CD_FILE
 
-	if echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'mktemp' && \
-	   echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'MLH_BOOKMARK_CD_FILE' && \
-	   echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'export.*MLH_BOOKMARK_CD_FILE' && \
-	   echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'source.*tmp_cd_file'; then
+	if echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'mktemp' &&
+		echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'MLH_BOOKMARK_CD_FILE' &&
+		echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'export.*MLH_BOOKMARK_CD_FILE' &&
+		echo "$wrapper_content" | grep -A 20 'interactive' | grep -q 'source.*tmp_cd_file'; then
 		print_test_result "Wrapper function uses unique temp file with environment variable for cd" "PASS"
 	else
 		print_test_result "Wrapper function uses unique temp file with environment variable for cd" "FAIL" "Interactive mode should use mktemp and export MLH_BOOKMARK_CD_FILE"
@@ -801,9 +807,9 @@ if [ -f "$plugin_file" ]; then
 	# Should contain: tmp_cd_file="${MLH_BOOKMARK_CD_FILE:-/tmp/bookmark-cd-${USER:-$(id -un)}}"
 	# Should contain: printf 'cd "%s"\n' "$bookmark_path" > "$tmp_cd_file"
 	# Should contain: atomic write with mv (tmp file then move)
-	if grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'MLH_BOOKMARK_CD_FILE' && \
-	   grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'printf.*cd' && \
-	   grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'mv.*tmp_cd_file'; then
+	if grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'MLH_BOOKMARK_CD_FILE' &&
+		grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'printf.*cd' &&
+		grep -A 10 "# Write cd command to temp file" "$plugin_file" | grep -q 'mv.*tmp_cd_file'; then
 		print_test_result "Plugin uses environment variable for temp file on bookmark selection" "PASS"
 	else
 		print_test_result "Plugin uses environment variable for temp file on bookmark selection" "FAIL" "Interactive mode should use MLH_BOOKMARK_CD_FILE env var and atomic write"
@@ -821,12 +827,14 @@ if [ -f "$wrapper_file" ]; then
 	# Check if wrapper handles "bookmark list" (without -i) as interactive
 	# The wrapper should check for list command and handle default interactive mode
 	# Should NOT require explicit -i flag when list defaults to interactive
+	# shellcheck disable=SC2016
 	if echo "$wrapper_content" | grep -A 40 "bookmark()" | grep -A 20 "list" | grep -qE '\[.*"\$cmd".*=.*"list".*\]'; then
 		# Wrapper checks for list command
 		# Check if it handles default interactive mode (not just explicit -i flag)
 		# Should handle: bookmark list (no args) as interactive
 		# Should exclude: bookmark list -n (non-interactive)
 		# Should exclude: bookmark list 5 (number limit, non-interactive)
+		# shellcheck disable=SC2016
 		if echo "$wrapper_content" | grep -A 40 "bookmark()" | grep -A 20 "list" | grep -qE '\[.*"\$2".*=.*"-n".*\]|\[.*"\$2".*=.*"--non-interactive".*\]'; then
 			# Wrapper excludes non-interactive flags
 			# Check if it handles default case (no -n flag) as interactive
@@ -874,42 +882,42 @@ else
 	test75_bookmark_file="/tmp/test-bookmark-75-$$"
 	test_bookmark_dir=$(mktemp -d)
 	cd "$test_bookmark_dir" || exit 1
-	
+
 	# Create bookmark in test file
 	MLH_BOOKMARK_FILE="$test75_bookmark_file" bash "$PLUGIN_SCRIPT" . -n test75bookmark >/dev/null 2>&1
-	
+
 	# Create a different starting directory
 	start_dir=$(mktemp -d)
-	
+
 	# Create unique session name
 	session_name="test-bookmark-75-$$"
-	
+
 	# Kill any existing session with same name
 	tmux kill-session -t "$session_name" 2>/dev/null || true
-	
+
 	# Create tmux session with bash -i (interactive, loads .bashrc)
 	# Pass environment variable to tmux session
 	# IMPORTANT: Must load fresh setup.sh to get latest wrapper function
 	# NOTE: Don't use 'exec bash -i' because it replaces the shell and loses function definitions!
 	tmux new-session -d -s "$session_name" "source '$ROOT_DIR/setup.sh'; export MLH_BOOKMARK_FILE='$test75_bookmark_file'; bash -i"
 	sleep 1.5
-	
+
 	# Send commands to tmux session
 	tmux send-keys -t "$session_name" "cd '$start_dir'" C-m
 	sleep 0.2
 	tmux send-keys -t "$session_name" "pwd > /tmp/pwd-before-75-$$" C-m
 	sleep 0.2
-	
+
 	# Start interactive bookmark list (default interactive mode - no -i flag needed in PR branch)
 	# PR branch: bookmark list defaults to interactive mode
 	# This tests that wrapper function works with default interactive mode
 	tmux send-keys -t "$session_name" "bookmark list" C-m
 	sleep 0.5
-	
+
 	# Press Enter to select first bookmark (which should be test75bookmark)
 	tmux send-keys -t "$session_name" "" C-m
 	sleep 1.0
-	
+
 	# Exit interactive mode - try multiple methods
 	# First try 'q' followed by Enter
 	tmux send-keys -t "$session_name" "q"
@@ -922,27 +930,27 @@ else
 	# Last resort: Ctrl+C
 	tmux send-keys -t "$session_name" C-c
 	sleep 0.5
-	
+
 	# Get PWD after
 	tmux send-keys -t "$session_name" "pwd > /tmp/pwd-after-75-$$" C-m
 	sleep 0.2
-	
+
 	# Exit tmux session
 	tmux send-keys -t "$session_name" "exit" C-m
 	sleep 0.2
-	
+
 	# Kill session
 	tmux kill-session -t "$session_name" 2>/dev/null || true
-	
+
 	# Compare PWDs
 	pwd_before=$(cat /tmp/pwd-before-75-$$ 2>/dev/null || echo "")
 	pwd_after=$(cat /tmp/pwd-after-75-$$ 2>/dev/null || echo "")
-	
+
 	# Cleanup temp files ONLY (keep directories until after PWD comparison)
 	rm -f /tmp/pwd-before-75-$$ /tmp/pwd-after-75-$$ "$test75_bookmark_file" 2>/dev/null || true
 	# Note: Don't remove directories yet - they're needed for cd to work
 	# Cleanup will happen at test suite end via cleanup_bookmark_tests
-	
+
 	if [ -n "$pwd_before" ] && [ -n "$pwd_after" ] && [ "$pwd_before" != "$pwd_after" ]; then
 		print_test_result "Interactive mode cd on first invocation" "PASS" "Directory changed: $pwd_before -> $pwd_after"
 	else
@@ -979,88 +987,88 @@ else
 	test77_bookmark_file="/tmp/test-bookmark-77-$$"
 	test_bookmark_dir1_77=$(mktemp -d)
 	test_bookmark_dir2_77=$(mktemp -d)
-	
+
 	# Create TWO bookmarks for this test (to select twice in same session)
 	cd "$test_bookmark_dir1_77" || exit 1
 	MLH_BOOKMARK_FILE="$test77_bookmark_file" bash "$PLUGIN_SCRIPT" . -n bm1_77 >/dev/null 2>&1
 	cd "$test_bookmark_dir2_77" || exit 1
 	MLH_BOOKMARK_FILE="$test77_bookmark_file" bash "$PLUGIN_SCRIPT" . -n bm2_77 >/dev/null 2>&1
-	
+
 	# Create a different starting directory
 	start_dir_77=$(mktemp -d)
-	
+
 	# Create unique session name
 	session_name_77="test-bookmark-77-$$"
-	
+
 	# Kill any existing session with same name
 	tmux kill-session -t "$session_name_77" 2>/dev/null || true
-	
+
 	# Create tmux session with bash -i (interactive, loads .bashrc)
 	# Pass environment variable to tmux session
 	# IMPORTANT: Must load fresh setup.sh to get latest wrapper function
 	# NOTE: Don't use 'exec bash -i' because it replaces the shell and loses function definitions!
 	tmux new-session -d -s "$session_name_77" "source '$ROOT_DIR/setup.sh'; export MLH_BOOKMARK_FILE='$test77_bookmark_file'; bash -i"
 	sleep 1.5
-	
+
 	# === TEST: TWO SEPARATE INVOCATIONS (not same session) ===
 	# Start from a known directory
 	tmux send-keys -t "$session_name_77" "cd '$start_dir_77'" C-m
 	sleep 0.3
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-start-77-$$" C-m
 	sleep 0.3
-	
+
 	# FIRST INVOCATION: bookmark list (default interactive mode in PR branch), select first bookmark
 	tmux send-keys -t "$session_name_77" "bookmark list" C-m
 	sleep 1.0
-	tmux send-keys -t "$session_name_77" "" C-m  # Enter - select first bookmark
+	tmux send-keys -t "$session_name_77" "" C-m # Enter - select first bookmark
 	sleep 1.2
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-after-first-77-$$" C-m
 	sleep 0.3
-	
+
 	# SECOND INVOCATION: bookmark list again (default interactive mode), select second bookmark
 	tmux send-keys -t "$session_name_77" "bookmark list" C-m
 	sleep 1.0
-	tmux send-keys -t "$session_name_77" "Down" C-m  # Navigate to second bookmark
+	tmux send-keys -t "$session_name_77" "Down" C-m # Navigate to second bookmark
 	sleep 0.5
-	tmux send-keys -t "$session_name_77" "" C-m  # Enter - select second bookmark
+	tmux send-keys -t "$session_name_77" "" C-m # Enter - select second bookmark
 	sleep 1.2
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-final-77-$$" C-m
 	sleep 0.3
-	
+
 	# Exit tmux session
 	tmux send-keys -t "$session_name_77" "exit" C-m
 	sleep 0.2
-	
+
 	# Kill session
 	tmux kill-session -t "$session_name_77" 2>/dev/null || true
-	
+
 	# Read PWDs
 	pwd_start=$(cat /tmp/pwd-start-77-$$ 2>/dev/null || echo "")
 	pwd_after_first=$(cat /tmp/pwd-after-first-77-$$ 2>/dev/null || echo "")
 	pwd_final=$(cat /tmp/pwd-final-77-$$ 2>/dev/null || echo "")
-	
+
 	# Cleanup
 	rm -f /tmp/pwd-start-77-$$ /tmp/pwd-after-first-77-$$ /tmp/pwd-final-77-$$ 2>/dev/null || true
 	rm -f "$test77_bookmark_file" 2>/dev/null || true
 	rm -rf "$test_bookmark_dir1_77" "$test_bookmark_dir2_77" "$start_dir_77" 2>/dev/null || true
-	
+
 	# Test logic:
 	# After TWO SEPARATE invocations, PWD should change both times
 	#   Start: $start_dir_77
 	#   After first: $test_bookmark_dir1_77 (first bookmark)
 	#   Final: $test_bookmark_dir2_77 (second bookmark)
-	
+
 	# Check if both invocations worked
 	first_worked="no"
 	if [ "$pwd_after_first" = "$test_bookmark_dir1_77" ]; then
 		first_worked="yes"
 	fi
-	
+
 	second_worked="no"
 	if [ "$pwd_final" = "$test_bookmark_dir2_77" ]; then
 		second_worked="yes"
 	fi
-	
+
 	if [ "$first_worked" = "yes" ] && [ "$second_worked" = "yes" ]; then
 		print_test_result "Interactive mode cd on second invocation (Issue #5)" "PASS" "Both invocations work! Start: $pwd_start -> 1st: $pwd_after_first -> 2nd: $pwd_final"
 	elif [ "$first_worked" = "yes" ]; then

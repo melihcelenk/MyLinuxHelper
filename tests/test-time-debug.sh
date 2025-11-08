@@ -142,9 +142,9 @@ export HISTTIMEFORMAT="%s"
 
 # Test that parse_history_with_timestamps can read the test file
 test_output=$(parse_history_with_timestamps 2>&1)
-if echo "$test_output" | grep -q "command from 1 hour ago" && \
-   echo "$test_output" | grep -q "command from 5 minutes ago" && \
-   echo "$test_output" | grep -q "recent command"; then
+if echo "$test_output" | grep -q "command from 1 hour ago" &&
+	echo "$test_output" | grep -q "command from 5 minutes ago" &&
+	echo "$test_output" | grep -q "recent command"; then
 	print_test_result "parse_history_with_timestamps reads all commands" "PASS"
 else
 	print_test_result "parse_history_with_timestamps reads all commands" "FAIL" "Failed to parse test history file"
@@ -154,8 +154,8 @@ fi
 filter_output=$(filter_by_date "10m" 2>&1)
 # Should get at least 2 commands from our test data: 5m ago and current
 # (1h ago command is outside the 10m window)
-if echo "$filter_output" | grep -q "command from 5 minutes ago" && \
-   echo "$filter_output" | grep -q "recent command"; then
+if echo "$filter_output" | grep -q "command from 5 minutes ago" &&
+	echo "$filter_output" | grep -q "recent command"; then
 	print_test_result "filter_by_date correctly filters by time range" "PASS"
 else
 	print_test_result "filter_by_date correctly filters by time range" "FAIL" "Could not find expected commands in 10m range"

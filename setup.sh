@@ -20,7 +20,6 @@ NC='\033[0m' # No Color
 # Track if bashrc was updated (for notification at end)
 BASHRC_UPDATED=0
 
-
 # Load MLH configuration
 BOOKMARK_ALIAS=""
 if [ -f "$MLH_CONFIG_FILE" ]; then
@@ -187,7 +186,7 @@ if [ -n "${BOOKMARK_ALIAS:-}" ]; then
 				echo -e "${YELLOW}Function will take precedence, but consider removing the conflicting command${NC}"
 			fi
 		fi
-		
+
 		# Add the wrapper function (functions take precedence over commands/symlinks)
 		ALIAS_WRAPPER_MARKER="# MyLinuxHelper - $BOOKMARK_ALIAS alias wrapper"
 		if ! grep -Fq "$ALIAS_WRAPPER_MARKER" "$BASHRC" 2>/dev/null; then
@@ -246,12 +245,12 @@ if [ "${MLH_INSTALL_USR_LOCAL:-0}" = "1" ] && command -v sudo >/dev/null 2>&1; t
 		["/usr/local/bin/mlh"]="$PLUGINS_DIR/mlh.sh"
 		["/usr/local/bin/search"]="$PLUGINS_DIR/search.sh"
 	)
-	
+
 	# Add bookmark alias to usr/local if configured
 	if [ -n "${BOOKMARK_ALIAS:-}" ]; then
 		ULINKS["/usr/local/bin/$BOOKMARK_ALIAS"]="$PLUGINS_DIR/mlh-bookmark.sh"
 	fi
-	
+
 	for link in "${!ULINKS[@]}"; do
 		target="${ULINKS[$link]}"
 		sudo rm -f "$link" 2>/dev/null || true

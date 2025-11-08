@@ -88,17 +88,17 @@ print_summary() {
 	echo -e "${CYAN}========================================${NC}"
 	echo -e "${CYAN}Test Summary${NC}"
 	echo -e "${CYAN}========================================${NC}"
-	
+
 	# Print per-suite results if any suites were run
 	if [ -s "$SUITE_STATS_FILE" ]; then
 		echo ""
 		echo -e "${CYAN}Results by Test Suite:${NC}"
 		echo ""
-		
+
 		while IFS='|' read -r suite_name suite_total suite_passed suite_failed suite_skipped; do
 			local status_indicator=""
 			local color=""
-			
+
 			if [ "$suite_failed" -gt 0 ]; then
 				status_indicator=" ${RED}[FAILURE]${NC}"
 				color="$RED"
@@ -109,7 +109,7 @@ print_summary() {
 				status_indicator=" ${GREEN}[OK]${NC}"
 				color="$GREEN"
 			fi
-			
+
 			# Print suite results with proper formatting
 			printf "  %-25s" "$suite_name:"
 			if [ "$suite_failed" -gt 0 ]; then
@@ -119,11 +119,11 @@ print_summary() {
 			else
 				echo -e "${GREEN}$suite_passed/$suite_total passed${NC}$status_indicator"
 			fi
-		done < "$SUITE_STATS_FILE"
-		
+		done <"$SUITE_STATS_FILE"
+
 		echo ""
 	fi
-	
+
 	echo -e "${CYAN}Overall Results:${NC}"
 	echo -e "Total tests:  $TOTAL_TESTS"
 	echo -e "${GREEN}Passed:       $PASSED_TESTS${NC}"
@@ -149,7 +149,7 @@ print_summary() {
 run_test_suite() {
 	local suite_name="$1"
 	local test_file
-	
+
 	# Check if suite_name contains a path (subdirectory)
 	if [[ "$suite_name" == */* ]]; then
 		# Path format: bookmark/mlh-bookmark -> tests/bookmark/test-mlh-bookmark.sh
@@ -205,7 +205,7 @@ run_test_suite() {
 	local suite_skipped=$((SKIPPED_TESTS - suite_start_skipped))
 
 	# Save suite stats (pipe-delimited for easy parsing)
-	echo "${suite_name}|${suite_total}|${suite_passed}|${suite_failed}|${suite_skipped}" >> "$SUITE_STATS_FILE"
+	echo "${suite_name}|${suite_total}|${suite_passed}|${suite_failed}|${suite_skipped}" >>"$SUITE_STATS_FILE"
 }
 
 run_all_tests() {
@@ -226,7 +226,7 @@ run_all_tests() {
 		local relative_path="${test_file#$SCRIPT_DIR/}"
 		suite_name=$(basename "$test_file" .sh)
 		suite_name="${suite_name#test-}"
-		
+
 		# If in subdirectory, prefix with directory name
 		if [[ "$relative_path" == */* ]]; then
 			local dir_name=$(dirname "$relative_path")

@@ -223,7 +223,7 @@ update_to_latest() {
 		echo ""
 		echo "Reloading shell to apply changes..."
 		echo ""
-		
+
 		# Reload the shell to apply new functions and updates
 		exec bash -l
 	else
