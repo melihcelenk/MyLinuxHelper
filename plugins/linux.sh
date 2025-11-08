@@ -27,6 +27,12 @@
 
 set -euo pipefail
 
+# Colors
+readonly GREEN='\033[0;32m'
+readonly CYAN='\033[0;36m'
+readonly YELLOW='\033[1;33m'
+readonly NC='\033[0m'
+
 # Defaults
 MODE="tmp" # tmp | permanent | stop | delete
 IMAGE="ubuntu:24.04"
@@ -35,30 +41,54 @@ MOUNT_MLH=1
 SHELL_BIN="bash"
 
 print_help() {
+	echo -e "${CYAN}linux${NC} - Quick Linux container management"
+	echo ""
+	echo "Usage:"
 	cat <<'EOF'
-Usage:
   linux [options] <name>
   linux --help
-
-Modes:
+EOF
+	echo ""
+	echo "Modes:"
+	cat <<'EOF'
   -t, --tmp                    Ephemeral (default). Run container and auto-remove on exit.
   -p, --permanent              Permanent. Create (if missing), start, and enter. Not removed on exit.
   -s, --stop                   Stop the container <name>.
   -d, --delete                 Stop (if running) and remove the container <name>.
-
-Extra options:
+EOF
+	echo ""
+	echo "Extra options:"
+	cat <<'EOF'
   -i, --image <image>          Base image (default: ubuntu:24.04).
   -m, --mount <host:cont>      Bind mount (repeatable). Example: -m "$PWD:/workspace"
       --no-mlh                 Do NOT mount MyLinuxHelper into /opt/mlh.
       --shell <sh>             Shell inside container (default: bash).
   -h, --help                   Show this help.
-
-Examples:
+EOF
+	echo ""
+	echo "Notes:"
+	cat <<'EOF'
+  • Inside container, /opt/mlh/install.sh is sourced automatically (if mounted)
+  • Use 'i <package>' command inside container for quick package installation
+  • Requires Docker to be installed
+EOF
+	echo ""
+	echo "Examples:"
+	echo -e "  ${GREEN}# Quick ephemeral container${NC}"
+	cat <<'EOF'
   linux mycontainer
   linux -t -i debian:12 mycontainer
+EOF
+	echo ""
+	echo -e "  ${GREEN}# Persistent container with workspace${NC}"
+	cat <<'EOF'
   linux -p -m "$PWD:/workspace" mycontainer
-  linux -s mycontainer
-  linux -d mycontainer
+EOF
+	echo ""
+	echo -e "  ${GREEN}# Manage containers${NC}"
+	cat <<'EOF'
+  linux -s mycontainer         # Stop
+  linux -d mycontainer         # Delete
 EOF
 }
 
