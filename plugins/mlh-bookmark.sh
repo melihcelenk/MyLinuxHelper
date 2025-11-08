@@ -30,15 +30,20 @@ readonly NC='\033[0m' # No Color
 readonly VERSION="1.0.0"
 readonly MLH_CONFIG_DIR="${HOME}/.mylinuxhelper"
 readonly BOOKMARK_FILE="${MLH_BOOKMARK_FILE:-$MLH_CONFIG_DIR/bookmarks.json}"
-readonly ALIAS_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
+readonly MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
+readonly OLD_ALIAS_CONFIG="$MLH_CONFIG_DIR/bookmark-alias.conf"
 readonly MAX_UNNAMED_BOOKMARKS=10
 
-# Load alias configuration if exists
+# Load alias configuration from mlh.conf (or legacy bookmark-alias.conf)
 BOOKMARK_ALIAS=""
-if [ -f "$ALIAS_CONFIG_FILE" ]; then
-	# Source the config file to get BOOKMARK_ALIAS value
+if [ -f "$MLH_CONFIG_FILE" ]; then
+	# Source the main config file to get BOOKMARK_ALIAS value
 	# shellcheck source=/dev/null
-	source "$ALIAS_CONFIG_FILE" 2>/dev/null || true
+	source "$MLH_CONFIG_FILE" 2>/dev/null || true
+elif [ -f "$OLD_ALIAS_CONFIG" ]; then
+	# Backward compatibility: read from old config file
+	# shellcheck source=/dev/null
+	source "$OLD_ALIAS_CONFIG" 2>/dev/null || true
 fi
 
 # Determine command name for help messages (alias if configured, otherwise 'bookmark')
@@ -994,19 +999,26 @@ interactive_list() {
 list_bookmarks() {
 	local filter_category="${1:-}"
 	local limit=""
-	local interactive=false
+	local non_interactive=false
 
-	# Check for interactive flag
-	if [ "$filter_category" = "-i" ] || [ "$filter_category" = "--interactive" ]; then
-		interactive_list
-		local exit_code=$?
-		return $exit_code
+	# Check for non-interactive flag (new: -n or --non-interactive)
+	if [ "$filter_category" = "-n" ] || [ "$filter_category" = "--non-interactive" ]; then
+		non_interactive=true
+		shift
+		filter_category="${1:-}"
 	fi
 
 	# Check if argument is a number (limit) or string (category filter)
 	if [ -n "$filter_category" ] && [[ "$filter_category" =~ ^[0-9]+$ ]]; then
 		limit="$filter_category"
 		filter_category=""
+	fi
+	
+	# Default to interactive mode unless -n flag is used or filter/limit is specified
+	if [ "$non_interactive" = false ] && [ -z "$filter_category" ] && [ -z "$limit" ]; then
+		interactive_list
+		local exit_code=$?
+		return $exit_code
 	fi
 
 	[ ! -f "$BOOKMARK_FILE" ] && init_bookmark_file
@@ -1157,10 +1169,12 @@ show_help() {
   $COMMAND_NAME . -n <name> in <cat> Save with category
   $COMMAND_NAME <name>               Jump to named bookmark
   $COMMAND_NAME 1 -n <name>          Rename bookmark 1 to name
-  $COMMAND_NAME list                 List all bookmarks
-  $COMMAND_NAME list -i              Interactive list (arrow keys, delete, edit)
-  $COMMAND_NAME list <category>      List bookmarks in category
-  $COMMAND_NAME list <N>             List last N unnamed bookmarks
+  $COMMAND_NAME list                 Interactive list (arrow keys, delete, edit) [DEFAULT]
+  $COMMAND_NAME list -n              Non-interactive list (simple output)
+  $COMMAND_NAME list -n <category>   Non-interactive list for category
+  $COMMAND_NAME list -n <N>          List last N unnamed bookmarks (non-interactive)
+  $COMMAND_NAME list <category>      Interactive list filtered by category
+  $COMMAND_NAME list <N>             List last N unnamed (non-interactive)
   $COMMAND_NAME mv <name> to <cat>   Move bookmark to category
   $COMMAND_NAME rm <name|number>     Remove a bookmark
   $COMMAND_NAME clear                Clear all unnamed bookmarks
@@ -1195,10 +1209,10 @@ EOF
 	echo ""
 	echo -e "  ${GREEN}# List bookmarks${NC}"
 	cat <<EOF
-  $COMMAND_NAME list                 # Show all bookmarks (grouped by category)
-  $COMMAND_NAME list -i              # Interactive menu with arrow key navigation
-  $COMMAND_NAME list projects        # Show only 'projects' category
-  $COMMAND_NAME list projects/java   # Show nested category
+  $COMMAND_NAME list                 # Interactive menu (default)
+  $COMMAND_NAME list -n              # Non-interactive list (simple output)
+  $COMMAND_NAME list projects        # Interactive list for 'projects' category
+  $COMMAND_NAME list -n projects     # Non-interactive list for category
   $COMMAND_NAME list 5               # Show last 5 unnamed bookmarks
 EOF
 	echo ""
@@ -1259,6 +1273,7 @@ main() {
 		# Check dependencies for actual operations
 		check_jq
 		shift
+		# Pass all remaining arguments to list_bookmarks
 		list_bookmarks "$@"
 		exit 0
 		;;

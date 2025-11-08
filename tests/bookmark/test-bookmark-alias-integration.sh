@@ -4,7 +4,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+TESTS_DIR="$(dirname "$SCRIPT_DIR")"
+ROOT_DIR="$(dirname "$TESTS_DIR")"
 
 # Source test framework functions from parent
 if [ -n "${STATS_FILE:-}" ]; then
@@ -42,7 +43,7 @@ setup_test_env() {
 	mkdir -p "$TEST_HOME/.local/bin"
 	export HOME="$TEST_HOME"
 	export MLH_CONFIG_DIR="$TEST_HOME/.mylinuxhelper"
-	export ALIAS_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
+	export MLH_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
 	
 	# Create minimal bashrc
 	touch "$TEST_HOME/.bashrc"
@@ -65,7 +66,7 @@ setup_test_env
 #
 
 # Test 1: Alias wrapper delegates to bookmark function
-echo "BOOKMARK_ALIAS=bm" > "$ALIAS_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=bm" > "$MLH_CONFIG_FILE"
 
 # Create a mock bashrc with wrapper
 cat > "$TEST_HOME/.bashrc" << 'EOF'
@@ -109,7 +110,7 @@ fi
 #
 
 # Test 4: setup.sh runs without error with alias configured
-echo "BOOKMARK_ALIAS=testbm" > "$ALIAS_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=testbm" > "$MLH_CONFIG_FILE"
 output=$(cd "$ROOT_DIR" && bash setup.sh 2>&1 || true)
 exit_code=$?
 if [ $exit_code -eq 0 ] || echo "$output" | grep -q "Setup complete"; then
@@ -177,7 +178,7 @@ echo 'echo "existing command"' >> "$TEST_HOME/.local/bin/conflictcmd"
 chmod +x "$TEST_HOME/.local/bin/conflictcmd"
 export PATH="$TEST_HOME/.local/bin:$PATH"
 
-echo "BOOKMARK_ALIAS=conflictcmd" > "$ALIAS_CONFIG_FILE"
+echo "BOOKMARK_ALIAS=conflictcmd" > "$MLH_CONFIG_FILE"
 output=$(cd "$ROOT_DIR" && bash setup.sh 2>&1 || true)
 if echo "$output" | grep -qi "conflict\|already exists"; then
 	print_test_result "setup.sh detects command conflicts" "PASS"

@@ -232,7 +232,7 @@ fi
 # ============================================================================
 
 # Test 21: List all bookmarks
-result=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+result=$(bash "$PLUGIN_SCRIPT" list -n 2>&1)
 if echo "$result" | grep -q "testproject\|myapp"; then
 	print_test_result "bookmark list shows named bookmarks" "PASS"
 else
@@ -242,7 +242,7 @@ fi
 # Test 22: List shows unnamed bookmarks
 cd "$TEST_DIR_3" || exit 1
 bash "$PLUGIN_SCRIPT" . >/dev/null 2>&1
-result=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+result=$(bash "$PLUGIN_SCRIPT" list -n 2>&1)
 if echo "$result" | grep -qi "unnamed\|recent\|1:"; then
 	print_test_result "bookmark list shows unnamed bookmarks" "PASS"
 else
@@ -399,7 +399,7 @@ else
 fi
 
 # Test 37: List bookmarks shows categories
-result=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+result=$(bash "$PLUGIN_SCRIPT" list -n 2>&1)
 if echo "$result" | grep -qi "projects/test\|tools"; then
 	print_test_result "List bookmarks shows categories" "PASS"
 else
@@ -493,7 +493,7 @@ fi
 
 # Test 46: List command output uses echo -e for colors
 bash "$PLUGIN_SCRIPT" . -n colortest in testcat >/dev/null 2>&1
-list_output=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+list_output=$(bash "$PLUGIN_SCRIPT" list -n 2>&1)
 if echo "$list_output" | grep -q '\\033'; then
 	print_test_result "List output doesn't contain raw ANSI codes" "FAIL" "Found raw \\033 codes"
 else
@@ -710,11 +710,11 @@ else
 	print_test_result "Interactive list function exists" "FAIL" "Function not found"
 fi
 
-# Test 67: Interactive list flag handling in list_bookmarks
-if grep -q -- '--interactive' "$PLUGIN_SCRIPT" && grep -q 'interactive_list' "$PLUGIN_SCRIPT"; then
-	print_test_result "Interactive list flag handling present" "PASS"
+# Test 67: Non-interactive list flag handling in list_bookmarks (changed from --interactive to --non-interactive)
+if grep -q -- '--non-interactive' "$PLUGIN_SCRIPT" && grep -q 'interactive_list' "$PLUGIN_SCRIPT"; then
+	print_test_result "Non-interactive list flag handling present" "PASS"
 else
-	print_test_result "Interactive list flag handling present" "FAIL" "Flag handling not found"
+	print_test_result "Non-interactive list flag handling present" "FAIL" "Flag handling not found"
 fi
 
 # ============================================================================
@@ -747,7 +747,7 @@ cd "$TEST_DIR_1" || exit 1
 bash "$PLUGIN_SCRIPT" . -n bookmark1 in aaa/bbb >/dev/null 2>&1
 bash "$PLUGIN_SCRIPT" . -n bookmark2 in aaa/bbb/ccc >/dev/null 2>&1
 bash "$PLUGIN_SCRIPT" . -n bookmark3 in aaa >/dev/null 2>&1
-result=$(bash "$PLUGIN_SCRIPT" list 2>&1)
+result=$(bash "$PLUGIN_SCRIPT" list -n 2>&1)
 # Check if hierarchy is displayed (aaa should appear, then bbb under it, then ccc under bbb)
 if echo "$result" | grep -q "📂 aaa" && echo "$result" | grep -q "📂 bbb" && echo "$result" | grep -q "📂 ccc"; then
 	print_test_result "Hierarchical category display works" "PASS"
@@ -915,12 +915,8 @@ else
 	fi
 fi
 
-# Test 76: Interactive mode cd fails on second invocation (Issue #5)
-# This test demonstrates the bug: second invocation doesn't change directory
-# Expected: FAIL (because the bug exists)
-
-# This test is deprecated - see Test 77 for the actual automated test
-print_test_result "Interactive mode cd fails on second invocation (Issue #5 - see Test 77)" "SKIP" "Use Test 77 for automated testing"
+# Test 76: Interactive mode cd on second invocation (Issue #5)
+# Note: This is a known issue being tracked separately
 
 # Test 77: Interactive mode cd on second INVOCATION (not same session)
 # This test uses tmux to test: calling bookmark list -i TWICE (separate invocations)

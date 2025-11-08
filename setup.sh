@@ -10,7 +10,8 @@ LOCAL_BIN="$HOME/.local/bin"
 BASHRC="$HOME/.bashrc"
 PROFILE="$HOME/.profile"
 MLH_CONFIG_DIR="$HOME/.mylinuxhelper"
-ALIAS_CONFIG_FILE="$MLH_CONFIG_DIR/bookmark-alias.conf"
+MLH_CONFIG_FILE="$MLH_CONFIG_DIR/mlh.conf"
+OLD_ALIAS_CONFIG="$MLH_CONFIG_DIR/bookmark-alias.conf"
 
 # Colors for output
 YELLOW='\033[1;33m'
@@ -20,11 +21,15 @@ NC='\033[0m' # No Color
 # Track if bashrc was updated (for notification at end)
 BASHRC_UPDATED=0
 
-# Load bookmark alias configuration if exists
+# Load MLH configuration (supports both new mlh.conf and old bookmark-alias.conf)
 BOOKMARK_ALIAS=""
-if [ -f "$ALIAS_CONFIG_FILE" ]; then
+if [ -f "$MLH_CONFIG_FILE" ]; then
 	# shellcheck source=/dev/null
-	source "$ALIAS_CONFIG_FILE" 2>/dev/null || true
+	source "$MLH_CONFIG_FILE" 2>/dev/null || true
+elif [ -f "$OLD_ALIAS_CONFIG" ]; then
+	# Backward compatibility: read from old config file
+	# shellcheck source=/dev/null
+	source "$OLD_ALIAS_CONFIG" 2>/dev/null || true
 fi
 
 # 1) Ensure ~/.local/bin exists and added to PATH for future shells
