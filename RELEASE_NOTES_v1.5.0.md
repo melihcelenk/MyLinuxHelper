@@ -13,12 +13,11 @@ We've added a highly requested usability feature - **configurable shortcut alias
 
 #### Key Highlights:
 
-- **Centralized Configuration:** New unified `~/.mylinuxhelper/mlh.conf` file for all MLH settings
+- **Custom Shortcuts:** Create your own shortcut/alias for the `bookmark` command (e.g., `bm`, `fav`, `goto`)
+- **Simple Setup:** Just add `BOOKMARK_ALIAS=bm` to `~/.mylinuxhelper/mlh.conf` and run `./setup.sh`
 - **Smart Conflict Detection:** Setup warns if your chosen alias conflicts with existing commands
-- **Flexible Configuration:** Choose any shortcut you prefer - `fav`, `bmk`, `mark`, `jump`, or anything you like!
-- **Dynamic Help:** The `bookmark --help` output automatically adapts to show examples with your configured shortcut
-- **Auto-Migration:** Old `bookmark-alias.conf` automatically migrated to `mlh.conf` on first setup
-- **Zero Breaking Changes:** The `bookmark` command continues to work as before - the alias is just a convenience
+- **Dynamic Help:** Help text automatically shows examples using your configured shortcut
+- **Full Feature Support:** All bookmark features work with the alias - it's just a convenient shortcut
 
 #### Example Usage:
 
@@ -32,12 +31,11 @@ bm --help               # Help shows 'bm' in examples
 
 #### Configuration:
 
-- **Config file:** `~/.mylinuxhelper/mlh.conf` (centralized for all MLH settings)
+- **Config file:** `~/.mylinuxhelper/mlh.conf` (new centralized config for all MLH settings)
 - **Format:** `BOOKMARK_ALIAS=bm`
 - **Example:** See `docs/config/mlh.conf.example` in repository
-- **Migration:** Old `bookmark-alias.conf` automatically migrated on first setup
-- Can be changed by editing the config file and re-running `./setup.sh`
-- Set to empty string to use only `bookmark` (no shortcut)
+- Change anytime by editing the config file and re-running `./setup.sh`
+- Set to empty string to disable the shortcut
 
 ---
 
@@ -63,21 +61,6 @@ bookmark list -n        # Non-interactive output (when needed)
 
 ---
 
-### 🐛 Bug Fixes
-
-#### Bookmark Interactive Mode Improvements
-- **Fixed:** Interactive bookmark navigation for named bookmarks with categories (Issue #6)
-  - Named bookmarks can now be selected properly in interactive mode
-  - Fixed jq query to handle both named and unnamed bookmarks correctly
-- **Fixed:** Interactive mode now uses unique temp files to prevent conflicts
-  - Each invocation gets its own temp file with environment variable support
-  - Proper cleanup of temp files even when interrupted (Ctrl+C)
-
-#### Enhanced TTY Handling
-- **Improved:** Better `/dev/tty` fallback for WSL and non-TTY environments
-- **Fixed:** Arrow key navigation and input handling in interactive mode
-
----
 
 ### ✨ Enhancements
 
@@ -183,16 +166,12 @@ Test Coverage by Component:
    source ~/.bashrc
    ```
 
-3. **Automatic Migration:**
-   - If you have old `bookmark-alias.conf`, it will be automatically migrated to `mlh.conf`
-   - Old file backed up as `bookmark-alias.conf.bak`
-
 ### No Breaking Changes
 
 - All existing `bookmark` commands continue to work exactly as before
-- **New default:** `bookmark list` now interactive (faster workflow!)
+- **New default:** `bookmark list` now shows interactive menu (faster workflow!)
 - Existing bookmarks in `~/.mylinuxhelper/bookmarks.json` are fully compatible
-- No configuration changes required if you don't want to use the shortcut
+- Shortcut/alias feature is completely optional
 
 ---
 
