@@ -350,8 +350,53 @@ When releasing a new version:
    readonly VERSION="X.Y.Z"
    readonly VERSION_DATE="DD.MM.YYYY"
    ```
-2. Commit and push to main branch
-3. Users can update via `mlh update`
+2. Create/update `RELEASE_NOTES_vX.Y.Z.md` with user-facing changes only
+3. Commit and push to main branch
+4. Users can update via `mlh update`
+
+### Release Notes Guidelines
+
+**Important:** Release notes should focus on **user-facing changes** since the last release tag, not internal bug fixes or refactoring.
+
+#### What to Include:
+- ✅ **New features** that users can see or use
+- ✅ **Behavior changes** that affect user workflow
+- ✅ **UI/UX improvements** (interactive modes, better output formatting)
+- ✅ **Configuration changes** (new config options, migration requirements)
+- ✅ **Breaking changes** (if any)
+- ✅ **Documentation updates** (new guides, improved examples)
+
+#### What to Exclude:
+- ❌ **Internal bug fixes** that don't change user-visible behavior
+- ❌ **Code refactoring** without functional changes
+- ❌ **Test improvements** (unless they fix user-reported issues)
+- ❌ **ShellCheck/formatting fixes** (code quality improvements)
+- ❌ **Internal tooling changes** (CI/CD, development workflow)
+
+#### Process:
+1. Identify the last release tag (e.g., `v1.4.1`)
+2. Review commits since that tag: `git log v1.4.1..HEAD --oneline`
+3. Filter for user-facing changes only
+4. Organize changes by category (Features, Enhancements, Bug Fixes, etc.)
+5. Update release notes file: `RELEASE_NOTES_vX.Y.Z.md`
+6. Update version number in `plugins/mlh-version.sh`
+7. Update release date in release notes
+
+**Example:**
+```bash
+# Check commits since last release
+git log v1.4.1..HEAD --oneline
+
+# Focus on commits that change user experience:
+# - "feat: Add new feature X"
+# - "Improve user workflow Y"
+# - "Fix user-visible bug Z"
+
+# Ignore internal changes:
+# - "Fix ShellCheck warnings"
+# - "Refactor internal function"
+# - "Update test coverage"
+```
 
 ## File Structure
 

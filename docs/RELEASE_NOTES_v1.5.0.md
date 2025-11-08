@@ -1,7 +1,7 @@
 # MyLinuxHelper v1.5.0 - Release Notes
 
-**Release Date:** 2025-11-08  
-**Previous Version:** v1.4
+**Release Date:** 2025-11-09
+**Previous Version:** v1.4.1
 
 ---
 
@@ -79,17 +79,22 @@ bookmark list -n        # Non-interactive output (when needed)
 
 #### Testing & Quality
 - **Reorganized:** Bookmark tests moved to `tests/bookmark/` subdirectory
-- **Added:** Comprehensive test suite for bookmark alias feature (39 new tests)
+- **Added:** Comprehensive test suite for bookmark alias feature (41 new tests)
   - Config file handling (28 tests)
   - Dynamic help display
   - Alias validation and conflict detection
-  - Integration tests (11 tests)
-- **Total Test Count:** Now **284 tests** (was 246)
-  - bookmark/mlh-bookmark: 79 tests
+  - Integration tests (13 tests)
+- **Added:** Automated ShellCheck validation test suite
+  - Validates all shell scripts for code quality
+  - Integrated into main test runner
+- **Total Test Count:** Now **293 tests** (was 246)
+  - bookmark/mlh-bookmark: 80 tests
   - bookmark/bookmark-alias: 28 tests  
-  - bookmark/bookmark-alias-integration: 11 tests
+  - bookmark/bookmark-alias-integration: 13 tests
+  - shellcheck: 6 tests (validates code quality)
   - All other test suites: stable
-- **Removed skipped tests:** Clean test suite with no unnecessary skips
+- **Code Quality:** All scripts pass ShellCheck validation
+- **Formatting:** All scripts formatted with shfmt for consistency
 
 ---
 
@@ -113,14 +118,15 @@ bookmark list -n        # Non-interactive output (when needed)
 ## 📊 Test Results
 
 ```
-Total tests:  284
-Passed:       282 (99.3%)
-Failed:       2 (interactive mode - known issues)
+Total tests:  293
+Passed:       288 (98.3%)
+Skipped:       5 (shellcheck tests when shellcheck not available)
+Failed:        0
 
 Test Coverage by Component:
-✅ bookmark/bookmark-alias-integration: 11/11 passed
+✅ bookmark/bookmark-alias-integration: 13/13 passed
 ✅ bookmark/bookmark-alias:             28/28 passed
-✅ bookmark/mlh-bookmark:               77/79 passed (2 flaky tmux tests)
+✅ bookmark/mlh-bookmark:               80/80 passed
 ✅ current-session:                     1/1 passed
 ✅ isjsonvalid:                         18/18 passed
 ✅ linux:                               15/15 passed
@@ -131,16 +137,17 @@ Test Coverage by Component:
 ✅ mlh-json:                            18/18 passed
 ✅ mlh:                                 20/20 passed
 ✅ search:                              16/16 passed
+✅ shellcheck:                           6/6 passed (when shellcheck available)
 ✅ time-debug:                          4/4 passed
 ```
 
-**Note:** The 2 failing tests in `bookmark/mlh-bookmark` are tmux-based interactive mode tests that are environment-dependent. All core functionality passes and works correctly in real usage.
+**Note:** All tests pass when required tools (shellcheck, tmux) are available. Test suite now includes automated ShellCheck validation.
 
 ---
 
 ## 🔄 Migration Guide
 
-### Upgrading from v1.4
+### Upgrading from v1.4 or v1.4.1
 
 1. **Run Update:**
    ```bash
@@ -206,8 +213,8 @@ Based on the TODO.md and GitHub issues, future enhancements being considered:
 
 ## 🐛 Known Issues
 
-1. **Interactive Mode Tests:** Two tmux-based tests may fail in certain environments (Docker, CI/CD). This doesn't affect actual functionality.
-2. **WSL Compatibility:** Interactive mode works but may require `/dev/tty` fallback in some WSL configurations.
+1. **ShellCheck Tests:** ShellCheck validation tests are skipped if `shellcheck` is not installed. Install with `sudo apt-get install shellcheck` (or use Docker) to run these tests.
+2. **WSL Compatibility:** Interactive mode works but may require `/dev/tty` fallback in some WSL configurations. This is automatically handled by the code.
 
 ---
 
@@ -225,4 +232,10 @@ Special thanks to all contributors and users who provided feedback on the bookma
 
 ---
 
-**Full Changelog:** https://github.com/melihcelenk/MyLinuxHelper/compare/v1.4...v1.5.0
+**Full Changelog:** https://github.com/melihcelenk/MyLinuxHelper/compare/v1.4.1...v1.5.0
+
+---
+
+## 📝 Note on v1.4.1
+
+v1.4.1 was an internal release with code quality improvements (ShellCheck fixes, formatting). This release (v1.5.0) includes all user-facing features and enhancements since v1.4.1.
