@@ -90,6 +90,7 @@ download_repo() {
 
 ensure_local_bin_on_path() {
 	mkdir -p "${LOCAL_BIN}"
+	# shellcheck disable=SC2016
 	local line='export PATH="$HOME/.local/bin:$PATH"'
 	grep -Fq "$line" "$BASHRC" 2>/dev/null || echo "$line" >>"$BASHRC"
 	grep -Fq "$line" "$PROFILE" 2>/dev/null || echo "$line" >>"$PROFILE"

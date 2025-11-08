@@ -33,8 +33,8 @@ resolve_script_dir() {
 	cd -P "$(dirname "$source")" && pwd
 }
 
+# shellcheck disable=SC2034
 SCRIPT_DIR="$(resolve_script_dir)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 CONFIG_DIR="${HOME}/.mylinuxhelper"
 HISTORY_CONFIG="${CONFIG_DIR}/.history-config"
 BASHRC="${HOME}/.bashrc"
@@ -147,9 +147,11 @@ enable_date_tracking() {
 	fi
 
 	# Add to bashrc
-	echo "" >>"$BASHRC"
-	echo "# MyLinuxHelper - Enable command history timestamps" >>"$BASHRC"
-	echo "$histtime_export" >>"$BASHRC"
+	{
+		echo ""
+		echo "# MyLinuxHelper - Enable command history timestamps"
+		echo "$histtime_export"
+	} >>"$BASHRC"
 
 	echo -e "${GREEN}✓ Date tracking enabled in ~/.bashrc${NC}"
 
@@ -388,7 +390,8 @@ show_history_simple() {
 	fi
 
 	# Create temp file for history data
-	local temp_file=$(mktemp)
+	local temp_file
+	temp_file=$(mktemp)
 	parse_history_with_timestamps >"$temp_file" || {
 		echo -e "${RED}Error: Failed to parse history${NC}"
 		rm -f "$temp_file"
@@ -412,7 +415,8 @@ show_history_simple() {
 	# Read and display
 	while IFS='|' read -r num ts cmd; do
 		if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-			local date=$(timestamp_to_date "$ts")
+			local date
+			date=$(timestamp_to_date "$ts")
 			printf "%-6s  %-19s  %s\n" "$num" "$date" "$cmd"
 		else
 			printf "%-6s  %s\n" "$num" "$cmd"
@@ -442,7 +446,8 @@ show_history_detailed() {
 	fi
 
 	# Create temp file for history data
-	local temp_file=$(mktemp)
+	local temp_file
+	temp_file=$(mktemp)
 	parse_history_with_timestamps >"$temp_file" || {
 		echo -e "${RED}Error: Failed to parse history${NC}"
 		rm -f "$temp_file"
@@ -467,7 +472,8 @@ show_history_detailed() {
 	while IFS='|' read -r num ts cmd; do
 		echo -e "${YELLOW}#${num}${NC}"
 		if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-			local date=$(timestamp_to_date "$ts")
+			local date
+			date=$(timestamp_to_date "$ts")
 			echo -e "  ${GREEN}Date:${NC} $date"
 		fi
 		echo -e "  ${BLUE}Command:${NC} $cmd"
@@ -512,7 +518,8 @@ find_in_history() {
 	fi
 	echo ""
 
-	local temp_file=$(mktemp)
+	local temp_file
+	temp_file=$(mktemp)
 	parse_history_with_timestamps >"$temp_file" || {
 		echo -e "${RED}Error: Failed to parse history${NC}"
 		rm -f "$temp_file"
@@ -520,7 +527,8 @@ find_in_history() {
 	}
 
 	# First pass: collect matching commands
-	local matches_file=$(mktemp)
+	local matches_file
+	matches_file=$(mktemp)
 	while IFS='|' read -r num ts cmd; do
 		if [[ "$cmd" == *"$pattern"* ]]; then
 			echo "${num}|${ts}|${cmd}" >>"$matches_file"
@@ -552,7 +560,8 @@ find_in_history() {
 	while IFS='|' read -r num ts cmd; do
 		shown=$((shown + 1))
 		if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-			local date=$(timestamp_to_date "$ts")
+			local date
+			date=$(timestamp_to_date "$ts")
 			echo -e "${GREEN}#${num}${NC} ${YELLOW}[${date}]${NC}"
 		else
 			echo -e "${GREEN}#${num}${NC}"
@@ -601,7 +610,8 @@ goto_command() {
 		end_num=$((start_num + context - 1))
 	fi
 
-	local temp_file=$(mktemp)
+	local temp_file
+	temp_file=$(mktemp)
 	parse_history_with_timestamps >"$temp_file" || {
 		echo -e "${RED}Error: Failed to parse history${NC}"
 		rm -f "$temp_file"
@@ -621,14 +631,16 @@ goto_command() {
 			if [ "$num" = "$target_num" ]; then
 				found=true
 				if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-					local date=$(timestamp_to_date "$ts")
+					local date
+					date=$(timestamp_to_date "$ts")
 					echo -e "${GREEN}► ${num}${NC}  ${YELLOW}${date}${NC}  ${GREEN}${cmd}${NC}"
 				else
 					echo -e "${GREEN}► ${num}${NC}  ${GREEN}${cmd}${NC}"
 				fi
 			else
 				if [ -n "$ts" ] && [ "$has_dates" = true ]; then
-					local date=$(timestamp_to_date "$ts")
+					local date
+					date=$(timestamp_to_date "$ts")
 					printf "  %-6s  %-19s  %s\n" "$num" "$date" "$cmd"
 				else
 					printf "  %-6s  %s\n" "$num" "$cmd"
@@ -687,8 +699,10 @@ filter_by_date() {
 		start_ts=$((end_ts - relative_seconds))
 
 		# Format for display
-		local start_display=$(timestamp_to_date "$start_ts")
-		local end_display=$(timestamp_to_date "$end_ts")
+		local start_display
+		start_display=$(timestamp_to_date "$start_ts")
+		local end_display
+		end_display=$(timestamp_to_date "$end_ts")
 
 		if [ -n "$before_offset" ]; then
 			echo -e "${CYAN}Commands: ${YELLOW}${date_filter}${CYAN} starting from ${YELLOW}${before_offset}${CYAN} ago${NC}"
@@ -727,7 +741,8 @@ filter_by_date() {
 	fi
 
 	# Parse and filter history
-	local temp_file=$(mktemp)
+	local temp_file
+	temp_file=$(mktemp)
 	parse_history_with_timestamps >"$temp_file" || {
 		echo -e "${RED}Error: Failed to parse history${NC}"
 		rm -f "$temp_file"
@@ -753,7 +768,8 @@ filter_by_date() {
 
 			if [ "$ts" -ge "$start_ts" ] && [ "$ts" -le "$end_ts" ]; then
 				found=$((found + 1))
-				local date=$(timestamp_to_date "$ts")
+				local date
+				date=$(timestamp_to_date "$ts")
 				echo -e "${GREEN}#${num}${NC} ${YELLOW}[${date}]${NC}"
 				echo -e "  ${cmd}"
 				echo ""
@@ -768,7 +784,8 @@ filter_by_date() {
 
 		# Provide helpful debugging information
 		if [ "$total_with_ts" -gt 0 ] && [ "$newest_ts" -gt 0 ]; then
-			local newest_date=$(timestamp_to_date "$newest_ts")
+			local newest_date
+			newest_date=$(timestamp_to_date "$newest_ts")
 			local time_diff=$((current_ts - newest_ts))
 			local time_diff_mins=$((time_diff / 60))
 			local time_diff_hours=$((time_diff / 3600))

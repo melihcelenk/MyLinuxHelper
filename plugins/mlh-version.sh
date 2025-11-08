@@ -15,7 +15,9 @@
 set -euo pipefail
 
 readonly VERSION="1.4.1"
+# shellcheck disable=SC2034
 readonly VERSION_DATE="20.10.2025"
+# shellcheck disable=SC2034
 readonly FIRST_RELEASE_DATE="11.10.2025"
 readonly GITHUB_REPO="melihcelenk/MyLinuxHelper"
 readonly INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main/get-mlh.sh"

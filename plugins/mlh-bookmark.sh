@@ -839,7 +839,7 @@ interactive_list() {
 				;;
 			'DOWN'|'j'|'J') # Down arrow or j
 				((selected++)) || true
-				[ $selected -ge $total ] && selected=0 || true
+				[ "$selected" -ge "$total" ] && selected=0 || true
 				;;
 			'') # Enter
 				local sel_type="${entry_types[$selected]}"
@@ -1087,7 +1087,7 @@ list_bookmarks() {
 			# Print each level of hierarchy
 			for i in "${!parts[@]}"; do
 				# Check if this level is new compared to previous category
-				if [ $i -ge ${#prev_parts[@]} ] || [ "${parts[$i]}" != "${prev_parts[$i]}" ]; then
+				if [ "$i" -ge ${#prev_parts[@]} ] || [ "${parts[$i]}" != "${prev_parts[$i]}" ]; then
 					local indent=""
 					for ((j=0; j<i; j++)); do
 						indent="  $indent"

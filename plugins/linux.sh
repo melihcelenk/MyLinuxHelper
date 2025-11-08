@@ -30,7 +30,6 @@ set -euo pipefail
 # Colors
 readonly GREEN='\033[0;32m'
 readonly CYAN='\033[0;36m'
-readonly YELLOW='\033[1;33m'
 readonly NC='\033[0m'
 
 # Defaults
@@ -168,7 +167,7 @@ resolve_mlh_root() {
 	local plugin_dir
 	plugin_dir="$(cd -P "$(dirname "$source")" && pwd)"
 	# Root is one level up (repo root containing install.sh, setup.sh, plugins/)
-	echo "$(dirname "$plugin_dir")"
+	dirname "$plugin_dir"
 }
 
 # Parse arguments (support short + long + repeatable -m)
@@ -257,6 +256,7 @@ if [ "$MOUNT_MLH" -eq 1 ]; then
 fi
 
 # Shell entry: add MLH plugins to PATH and make 'i' function available
+# shellcheck disable=SC2016
 ENTRY_CMD='
   if [ -d /opt/mlh ]; then
     PATH="/opt/mlh/plugins:$PATH"; export PATH;
