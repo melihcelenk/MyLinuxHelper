@@ -812,6 +812,39 @@ else
 	print_test_result "Plugin uses environment variable for temp file on bookmark selection" "SKIP" "mlh-bookmark.sh not found"
 fi
 
+# Test 74b: Wrapper function handles default interactive mode
+# PR branch: bookmark list defaults to interactive mode (no -i flag needed)
+# Wrapper function should detect this and handle cd correctly
+wrapper_file="$ROOT_DIR/setup.sh"
+if [ -f "$wrapper_file" ]; then
+	wrapper_content=$(sed -n '/# MyLinuxHelper - bookmark wrapper function/,/^}/p' "$wrapper_file" 2>/dev/null)
+	# Check if wrapper handles "bookmark list" (without -i) as interactive
+	# The wrapper should check for list command and handle default interactive mode
+	# Should NOT require explicit -i flag when list defaults to interactive
+	if echo "$wrapper_content" | grep -A 40 "bookmark()" | grep -A 20 "list" | grep -qE '\[.*"\$cmd".*=.*"list".*\]'; then
+		# Wrapper checks for list command
+		# Check if it handles default interactive mode (not just explicit -i flag)
+		# Should handle: bookmark list (no args) as interactive
+		# Should exclude: bookmark list -n (non-interactive)
+		# Should exclude: bookmark list 5 (number limit, non-interactive)
+		if echo "$wrapper_content" | grep -A 40 "bookmark()" | grep -A 20 "list" | grep -qE '\[.*"\$2".*=.*"-n".*\]|\[.*"\$2".*=.*"--non-interactive".*\]'; then
+			# Wrapper excludes non-interactive flags
+			# Check if it handles default case (no -n flag) as interactive
+			if echo "$wrapper_content" | grep -A 40 "bookmark()" | grep -A 20 "list" | grep -qE 'MLH_BOOKMARK_CD_FILE|tmp_cd_file'; then
+				print_test_result "Wrapper function handles default interactive mode (bookmark list without -i)" "PASS" "Wrapper correctly handles default interactive mode for bookmark list"
+			else
+				print_test_result "Wrapper function handles default interactive mode (bookmark list without -i)" "FAIL" "Wrapper checks for list but doesn't set up temp file for default interactive mode"
+			fi
+		else
+			print_test_result "Wrapper function handles default interactive mode (bookmark list without -i)" "FAIL" "Wrapper doesn't exclude non-interactive flags properly"
+		fi
+	else
+		print_test_result "Wrapper function handles default interactive mode (bookmark list without -i)" "FAIL" "Wrapper doesn't check for list command"
+	fi
+else
+	print_test_result "Wrapper function handles default interactive mode (bookmark list without -i)" "SKIP" "setup.sh not found"
+fi
+
 # ============================================================================
 # INTERACTIVE MODE CD TEST - Issue #5: Second invocation fails
 # ============================================================================
@@ -867,8 +900,10 @@ else
 	tmux send-keys -t "$session_name" "pwd > /tmp/pwd-before-75-$$" C-m
 	sleep 0.2
 	
-	# Start interactive bookmark list
-	tmux send-keys -t "$session_name" "bookmark list -i" C-m
+	# Start interactive bookmark list (default interactive mode - no -i flag needed in PR branch)
+	# PR branch: bookmark list defaults to interactive mode
+	# This tests that wrapper function works with default interactive mode
+	tmux send-keys -t "$session_name" "bookmark list" C-m
 	sleep 0.5
 	
 	# Press Enter to select first bookmark (which should be test75bookmark)
@@ -974,16 +1009,16 @@ else
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-start-77-$$" C-m
 	sleep 0.3
 	
-	# FIRST INVOCATION: bookmark list -i, select first bookmark
-	tmux send-keys -t "$session_name_77" "bookmark list -i" C-m
+	# FIRST INVOCATION: bookmark list (default interactive mode in PR branch), select first bookmark
+	tmux send-keys -t "$session_name_77" "bookmark list" C-m
 	sleep 1.0
 	tmux send-keys -t "$session_name_77" "" C-m  # Enter - select first bookmark
 	sleep 1.2
 	tmux send-keys -t "$session_name_77" "pwd > /tmp/pwd-after-first-77-$$" C-m
 	sleep 0.3
 	
-	# SECOND INVOCATION: bookmark list -i again, select second bookmark
-	tmux send-keys -t "$session_name_77" "bookmark list -i" C-m
+	# SECOND INVOCATION: bookmark list again (default interactive mode), select second bookmark
+	tmux send-keys -t "$session_name_77" "bookmark list" C-m
 	sleep 1.0
 	tmux send-keys -t "$session_name_77" "Down" C-m  # Navigate to second bookmark
 	sleep 0.5

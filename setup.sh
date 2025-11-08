@@ -95,7 +95,25 @@ bookmark() {
   local cmd="$1"
 
   # Special handling for interactive list - use unique temp file per invocation
-  if [ "$cmd" = "list" ] && ( [ "$2" = "-i" ] || [ "$2" = "--interactive" ] ); then
+  # PR branch: bookmark list defaults to interactive mode (no -i flag needed)
+  # Handle both explicit -i flag and default interactive mode
+  if [ "$cmd" = "list" ]; then
+    # Check if this is non-interactive mode (explicit -n flag)
+    if [ "$2" = "-n" ] || [ "$2" = "--non-interactive" ]; then
+      # Non-interactive mode - just pass through
+      command bookmark "$@"
+      return $?
+    fi
+    
+    # Check if second argument is a number (limit) - this is also non-interactive
+    if [ -n "$2" ] && [[ "$2" =~ ^[0-9]+$ ]]; then
+      # Number limit - non-interactive mode, pass through
+      command bookmark "$@"
+      return $?
+    fi
+    
+    # All other cases: default interactive mode, explicit -i flag, or category filter
+    # All of these should use interactive mode with cd support
     # Use unique temp file per invocation (more reliable than fixed path)
     # This ensures no race conditions between multiple invocations
     local tmp_cd_file
