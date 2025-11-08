@@ -80,57 +80,66 @@ mlh docker in web
 
 Save and jump to frequently used directories instantly:
 
+> **💡 Shortcut Available:** On first run, `setup.sh` will configure a short alias for you (default: `bm`).  
+> If `bm` conflicts with an existing command, you'll be prompted to choose an alternative (e.g., `fav`, `bmk`,
+`mark`).  
+> Use `bm --help` to see examples with your configured shortcut!
+
 ```bash
 # Save current directory (numbered bookmark)
-bookmark .
+bookmark .    # or: bm .
 
 # Jump to bookmark 1 (most recent)
-bookmark 1
+bookmark 1    # or: bm 1
 
 # Save with a memorable name
-bookmark . -n myproject
+bookmark . -n myproject    # or: bm . -n myproject
 
 # Jump to named bookmark
-bookmark myproject
+bookmark myproject    # or: bm myproject
 
 # Save with category for organization
-bookmark . -n mlh in projects/linux
-bookmark . -n api in projects/java
+bookmark . -n mlh in projects/linux    # or: bm . -n mlh in projects/linux
+bookmark . -n api in projects/java     # or: bm . -n api in projects/java
 
 # List all bookmarks (grouped by category)
-bookmark list
+bookmark list    # or: bm list
 
 # Interactive list with arrow key navigation
-bookmark list -i
+bookmark list -i    # or: bm list -i
 
 # List specific category
-bookmark list projects
+bookmark list projects    # or: bm list projects
 
 # Move bookmark to different category
-bookmark mv mlh to tools
+bookmark mv mlh to tools    # or: bm mv mlh to tools
 
 # Show last 5 numbered bookmarks
-bookmark list 5
+bookmark list 5    # or: bm list 5
 
 # Rename numbered bookmark
-bookmark 1 -n webapp
+bookmark 1 -n webapp    # or: bm 1 -n webapp
 
 # Edit bookmark (name/path/category)
-bookmark edit mlh
+bookmark edit mlh    # or: bm edit mlh
 
 # Remove bookmark
-bookmark rm oldproject
-bookmark rm 3
+bookmark rm oldproject    # or: bm rm oldproject
+bookmark rm 3              # or: bm rm 3
 
 # Search bookmarks
-bookmark find java
+bookmark find java    # or: bm find java
 
 # Clear all numbered bookmarks
-bookmark clear
+bookmark clear    # or: bm clear
+
+# View help (dynamically shows your configured shortcut)
+bookmark --help    # or: bm --help
 ```
 
 **Key Features:**
 
+- **Configurable shortcut alias**: Use `bm` (or your preferred shortcut) instead of typing `bookmark` every time!
 - **Stack-based numbered bookmarks**: Quick access to last 10 directories (auto-rotating, auto re-numbering)
 - **Named bookmarks**: Save important locations with memorable names
 - **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
@@ -138,10 +147,11 @@ bookmark clear
 - **Category filtering**: List bookmarks by category
 - **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
 - **Path validation**: Warns when bookmark path no longer exists
-- **Name conflict detection**: Prevents conflicts with system commands
+- **Name conflict detection**: Prevents conflicts with system commands (both for bookmarks and aliases)
 - **Bookmark management**: Edit, remove, clear bookmarks easily
 - **Instant navigation**: Jump to bookmarks without typing full paths
 - **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
+- **Dynamic help**: Help messages automatically adapt to show your configured shortcut
 
 ---
 
