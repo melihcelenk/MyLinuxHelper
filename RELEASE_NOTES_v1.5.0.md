@@ -13,12 +13,12 @@ We've added a highly requested usability feature - **configurable shortcut alias
 
 #### Key Highlights:
 
-- **Centralized Configuration:** Config moved to unified `~/.mylinuxhelper/mlh.conf` file
-- **Smart Conflict Detection:** If `bm` (or your chosen alias) already exists on your system, setup will warn you
+- **Centralized Configuration:** New unified `~/.mylinuxhelper/mlh.conf` file for all MLH settings
+- **Smart Conflict Detection:** Setup warns if your chosen alias conflicts with existing commands
 - **Flexible Configuration:** Choose any shortcut you prefer - `fav`, `bmk`, `mark`, `jump`, or anything you like!
 - **Dynamic Help:** The `bookmark --help` output automatically adapts to show examples with your configured shortcut
+- **Auto-Migration:** Old `bookmark-alias.conf` automatically migrated to `mlh.conf` on first setup
 - **Zero Breaking Changes:** The `bookmark` command continues to work as before - the alias is just a convenience
-- **Backward Compatible:** Old `bookmark-alias.conf` files still work
 
 #### Example Usage:
 
@@ -32,12 +32,12 @@ bm --help               # Help shows 'bm' in examples
 
 #### Configuration:
 
-- **New config file:** `~/.mylinuxhelper/mlh.conf` (centralized for all MLH settings)
+- **Config file:** `~/.mylinuxhelper/mlh.conf` (centralized for all MLH settings)
 - **Format:** `BOOKMARK_ALIAS=bm`
-- **Location:** See example at `docs/config/mlh.conf.example`
+- **Example:** See `docs/config/mlh.conf.example` in repository
+- **Migration:** Old `bookmark-alias.conf` automatically migrated on first setup
 - Can be changed by editing the config file and re-running `./setup.sh`
 - Set to empty string to use only `bookmark` (no shortcut)
-- **Backward compatibility:** Old `bookmark-alias.conf` still works
 
 ---
 
@@ -183,9 +183,9 @@ Test Coverage by Component:
    source ~/.bashrc
    ```
 
-3. **Existing Users with `bookmark-alias.conf`:**
-   - Your config will continue to work (backward compatible)
-   - Optional: migrate to new format by renaming to `mlh.conf`
+3. **Automatic Migration:**
+   - If you have old `bookmark-alias.conf`, it will be automatically migrated to `mlh.conf`
+   - Old file backed up as `bookmark-alias.conf.bak`
 
 ### No Breaking Changes
 
