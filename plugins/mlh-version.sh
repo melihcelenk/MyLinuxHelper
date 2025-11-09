@@ -14,9 +14,9 @@
 
 set -euo pipefail
 
-readonly VERSION="1.5.0"
+readonly VERSION="1.5.1"
 # shellcheck disable=SC2034
-readonly VERSION_DATE="08.11.2025"
+readonly VERSION_DATE="09.11.2025"
 # shellcheck disable=SC2034
 readonly FIRST_RELEASE_DATE="11.10.2025"
 readonly GITHUB_REPO="melihcelenk/MyLinuxHelper"

@@ -78,9 +78,39 @@ mlh docker in web
 
 ---
 
+### 📦 `linux` - Container Management
+
+Launch and manage isolated Linux containers quickly:
+
+![Linux & Docker Demo](docs/assets/MLH-Linux-Docker.gif)
+
+```bash
+# Create ephemeral container (auto-removed on exit)
+linux mycontainer
+
+# Create permanent container
+linux -p mycontainer
+
+# Stop container
+linux -s mycontainer
+
+# Delete container
+linux -d mycontainer
+
+# Use different base image
+linux -i debian:12 mycontainer
+
+# Bind mount directory
+linux -m "$PWD:/workspace" -p mycontainer
+```
+
+---
+
 ### 🔖 `bookmark` - Quick Directory Bookmarks
 
 Save and jump to frequently used directories instantly:
+
+![Bookmark Demo](docs/assets/MLH-Bookmark.gif)
 
 > **💡 Configurable Shortcut:** Configure your preferred alias (e.g., `bm`, `fav`, `goto`) in `~/.mylinuxhelper/mlh.conf`:
 > ```bash
@@ -156,30 +186,6 @@ bookmark --help    # or: bm --help
 - **Instant navigation**: Jump to bookmarks without typing full paths
 - **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
 - **Dynamic help**: Help messages automatically adapt to show your configured shortcut
-
----
-
-### 📦 `linux` - Container Management
-Launch and manage isolated Linux containers quickly:
-```bash
-# Create ephemeral container (auto-removed on exit)
-linux mycontainer
-
-# Create permanent container
-linux -p mycontainer
-
-# Stop container
-linux -s mycontainer
-
-# Delete container
-linux -d mycontainer
-
-# Use different base image
-linux -i debian:12 mycontainer
-
-# Bind mount directory
-linux -m "$PWD:/workspace" -p mycontainer
-```
 
 ---
 
@@ -354,7 +360,11 @@ search "*.conf" /etc
 ├── docs/
 │   ├── BOOKMARK_ALIAS_GUIDE.md        # Comprehensive alias setup guide
 │   ├── BOOKMARK_QUICK_REFERENCE.md    # Quick reference for bookmark commands
+│   ├── RELEASE_NOTES_v1.5.1.md        # Release notes for v1.5.1
 │   ├── RELEASE_NOTES_v1.5.0.md        # Release notes for v1.5.0
+│   ├── assets/
+│   │   ├── MLH-Bookmark.gif           # Bookmark demo animation
+│   │   └── MLH-Linux-Docker.gif       # Linux & Docker demo animation
 │   └── config/
 │       └── mlh.conf.example           # Example configuration file
 └── tests/

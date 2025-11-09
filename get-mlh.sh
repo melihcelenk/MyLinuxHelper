@@ -4,7 +4,7 @@ set -euo pipefail
 # ====== Your repo ======
 REPO_OWNER="melihcelenk"
 REPO_NAME="MyLinuxHelper"
-REPO_BRANCH="main"
+REPO_BRANCH="release/test"
 # =======================
 
 REPO_TARBALL_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
