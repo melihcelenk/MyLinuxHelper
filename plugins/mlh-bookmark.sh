@@ -702,7 +702,7 @@ interactive_list() {
 					# Print each level of hierarchy that's new
 					for level in "${!category_parts[@]}"; do
 						# Check if this level is new compared to previous category
-						if [ $level -ge ${#prev_category_parts[@]} ] || [ "${category_parts[$level]}" != "${prev_category_parts[$level]:-}" ]; then
+						if [ "$level" -ge "${#prev_category_parts[@]}" ] || [ "${category_parts[$level]}" != "${prev_category_parts[$level]:-}" ]; then
 							# Build indent for this level
 							local indent=""
 							for ((j = 0; j < level; j++)); do
