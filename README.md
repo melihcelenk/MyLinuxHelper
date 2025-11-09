@@ -77,6 +77,11 @@ mlh docker in web
 ```
 
 > **💡 Note:** `mlh docker in` automatically detects if Docker requires sudo permissions and uses `sudo docker` when needed. You don't need to run `sudo mlh docker in` - just run `mlh docker in <pattern>` and it will handle sudo automatically if required.
+>
+> **⚠️ Troubleshooting:** If you get `mlh: command not found` when running `sudo mlh docker in`, it's because `sudo` resets the PATH. Solutions:
+> - **Recommended:** Run without sudo: `mlh docker in <pattern>` (script handles sudo internally)
+> - **Alternative:** Use `sudo -E env PATH=$PATH mlh docker in <pattern>` to preserve PATH
+> - **Best long-term:** Add your user to the docker group: `sudo usermod -aG docker $USER` (then logout/login)
 
 ---
 
