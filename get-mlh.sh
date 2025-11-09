@@ -83,10 +83,8 @@ download_repo() {
 			fi
 		else
 			green "Cloning repo (git)…"
-			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || {
-				# If shallow clone fails, try full clone
-				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
-			}
+			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || \
+			git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
 		fi
 	else
 		green "Downloading repo (tarball)…"
