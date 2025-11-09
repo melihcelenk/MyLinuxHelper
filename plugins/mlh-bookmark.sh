@@ -61,7 +61,7 @@ check_jq() {
 	if ! command -v jq >/dev/null 2>&1; then
 		echo -e "${RED}Error: jq is required for bookmark functionality${NC}" >&2
 		echo -e "${YELLOW}Install with: sudo apt install jq${NC}" >&2
-		echo -e "${YELLOW}Or run: mlh install jq${NC}" >&2
+		echo -e "${YELLOW}Or run: i jq${NC}" >&2
 		exit 1
 	fi
 }
