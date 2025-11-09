@@ -76,7 +76,7 @@ mlh docker in web
 # Select container [1-3]: 1
 ```
 
-> **💡 Note:** Usually, you don't need `sudo` for `mlh docker in`. If your user is in the `docker` group, you can run it directly. If you need to use `sudo`, use: `sudo env "PATH=$PATH" mlh docker in <pattern>` or `sudo "$HOME/.local/bin/mlh" docker in <pattern>`
+> **💡 Note:** `mlh docker in` automatically detects if Docker requires sudo permissions and uses `sudo docker` when needed. You don't need to run `sudo mlh docker in` - just run `mlh docker in <pattern>` and it will handle sudo automatically if required.
 
 ---
 
