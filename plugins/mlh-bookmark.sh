@@ -666,7 +666,6 @@ interactive_list() {
 
 	local selected=0
 	local total=${#entries[@]}
-	local current_category=""
 
 	# Display function
 	show_menu() {
@@ -681,25 +680,62 @@ interactive_list() {
 		echo "└─────────────────────────────────────────────────────────────────┘"
 		echo ""
 
-		current_category=""
+		local current_category=""
+		local prev_category_parts=()
 		for i in "${!entries[@]}"; do
 			IFS='|' read -r type id_or_name path category created <<<"${entries[$i]}"
 
-			# Show category header
+			# Show category header (hierarchical)
 			if [ "$type" = "named" ] && [ "$category" != "$current_category" ]; then
-				current_category="$category"
-				echo -e "${BLUE}📂 $category${NC}"
+				# Handle Uncategorized specially
+				if [ -z "$category" ] || [ "$category" = "null" ]; then
+					if [ "$current_category" != "Uncategorized" ]; then
+						current_category="Uncategorized"
+						prev_category_parts=()
+						echo -e "${GRAY}📁 Uncategorized${NC}"
+					fi
+				else
+					current_category="$category"
+					# Split category by /
+					IFS='/' read -ra category_parts <<<"$category"
+
+					# Print each level of hierarchy that's new
+					for level in "${!category_parts[@]}"; do
+						# Check if this level is new compared to previous category
+						if [ $level -ge ${#prev_category_parts[@]} ] || [ "${category_parts[$level]}" != "${prev_category_parts[$level]:-}" ]; then
+							# Build indent for this level
+							local indent=""
+							for ((j = 0; j < level; j++)); do
+								indent="  $indent"
+							done
+							echo -e "${indent}${BLUE}📂 ${category_parts[$level]}${NC}"
+						fi
+					done
+
+					# Update prev_category_parts for next iteration
+					prev_category_parts=("${category_parts[@]}")
+				fi
 			elif [ "$type" = "unnamed" ] && [ "$current_category" != "📌 Recent (Unnamed)" ]; then
 				current_category="📌 Recent (Unnamed)"
+				prev_category_parts=()
 				echo ""
 				echo -e "${BLUE}$current_category${NC}"
 			fi
 
+			# Calculate indent for bookmark based on category depth
+			local bookmark_indent=""
+			if [ "$type" = "named" ] && [ -n "$category" ] && [ "$category" != "null" ]; then
+				IFS='/' read -ra category_parts <<<"$category"
+				for ((j = 0; j < ${#category_parts[@]}; j++)); do
+					bookmark_indent="  $bookmark_indent"
+				done
+			fi
+
 			# Show bookmark
 			if [ "$i" -eq "$selected" ]; then
-				echo -en "${GREEN}  ▶ "
+				echo -en "${bookmark_indent}${GREEN}▶ "
 			else
-				echo -n "    "
+				echo -n "${bookmark_indent}  "
 			fi
 
 			if [ "$type" = "named" ]; then
