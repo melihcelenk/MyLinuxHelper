@@ -71,9 +71,15 @@ in)
 	DOCKER_BIN=""
 	USE_SUDO=0
 
-	# Unset DOCKER_HOST if it points to Docker Desktop (which may not be running)
-	# This ensures we use the system Docker daemon at /var/run/docker.sock
-	if [ -n "${DOCKER_HOST:-}" ] && echo "$DOCKER_HOST" | grep -q "docker-desktop\|\.docker/desktop"; then
+	# Force use of system Docker daemon at /var/run/docker.sock
+	# Docker Desktop socket may be configured but not running
+	# Check if system Docker socket exists, if so use it
+	if [ -S "/var/run/docker.sock" ]; then
+		# Use system Docker daemon explicitly
+		export DOCKER_HOST="unix:///var/run/docker.sock"
+	elif [ -n "${DOCKER_HOST:-}" ] && echo "$DOCKER_HOST" | grep -q "docker-desktop\|\.docker/desktop"; then
+		# Docker Desktop socket configured but may not be running
+		# Unset it to let Docker client use default
 		unset DOCKER_HOST
 	fi
 
