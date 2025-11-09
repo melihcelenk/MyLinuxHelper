@@ -11,7 +11,9 @@
 # Examples:
 #   mlh docker in mycontainer    # Enter container with 'mycontainer' in name
 
-set -euo pipefail
+set -uo pipefail
+# Note: We don't use 'set -e' because we need to handle errors manually
+# for proper sudo detection and error messages
 
 print_help() {
 	cat <<'EOF'
@@ -96,46 +98,55 @@ in)
 	}
 
 	# Test Docker access and determine if sudo is needed
-	# First, try without sudo
-	DOCKER_TEST_OUTPUT=$("$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
+	# Strategy: Always try without sudo first, if it fails with permission error, use sudo
+	DOCKER_TEST_CMD="$DOCKER_BIN ps --format '{{.ID}}'"
+	DOCKER_TEST_OUTPUT=$($DOCKER_TEST_CMD 2>&1)
 	DOCKER_TEST_EXIT=$?
 
+	# Check if we need sudo
 	if [ $DOCKER_TEST_EXIT -ne 0 ]; then
-		# Docker command failed - check if it's a permission/connection error
-		# Common error patterns: permission denied, cannot connect, permission denied while trying to connect
-		if echo "$DOCKER_TEST_OUTPUT" | grep -qiE "permission denied|cannot connect to the docker daemon|Got permission denied|permission denied while trying to connect"; then
-			# Permission/connection error - try with sudo
+		# Check if it's a permission error
+		if echo "$DOCKER_TEST_OUTPUT" | grep -qiE "permission denied|cannot connect to the docker daemon|Got permission denied|permission denied while trying to connect|dial unix.*permission denied"; then
+			# Try with sudo
 			if command -v sudo >/dev/null 2>&1; then
-				# Test if sudo docker works
-				SUDO_TEST_OUTPUT=$(sudo "$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
+				SUDO_TEST_OUTPUT=$(sudo $DOCKER_TEST_CMD 2>&1)
 				SUDO_TEST_EXIT=$?
 				if [ $SUDO_TEST_EXIT -eq 0 ]; then
 					USE_SUDO=1
 				else
-					# Sudo also failed - show the error
 					die "Cannot access Docker daemon even with sudo. Error: $SUDO_TEST_OUTPUT"
 				fi
 			else
-				die "Docker requires sudo permissions but sudo is not available. Install sudo or add user to docker group. Original error: $DOCKER_TEST_OUTPUT"
+				die "Docker requires sudo permissions. Error: $DOCKER_TEST_OUTPUT"
 			fi
 		else
-			# Other error (not permission related) - could be daemon not running, etc.
+			# Other error
 			die "Docker command failed: $DOCKER_TEST_OUTPUT"
 		fi
 	fi
 
 	# Find matching containers (running only)
+	# Use run_docker function which handles sudo automatically
+	# Important: Use run_docker here, not direct docker command
 	CONTAINERS_OUTPUT=$(run_docker ps --format "{{.ID}}|{{.Names}}" 2>&1)
 	CONTAINERS_EXIT=$?
 
 	if [ $CONTAINERS_EXIT -ne 0 ]; then
-		die "Failed to list Docker containers: $CONTAINERS_OUTPUT"
+		die "Failed to list Docker containers. Exit code: $CONTAINERS_EXIT. Error: $CONTAINERS_OUTPUT"
 	fi
 
+	# Check if we got any output at all (even empty line means no containers)
+	if [ -z "$CONTAINERS_OUTPUT" ] || [ "$(echo "$CONTAINERS_OUTPUT" | tr -d '\n' | tr -d ' ')" = "" ]; then
+		die "No containers are currently running. Start a container first."
+	fi
+
+	# Filter containers by pattern (case-insensitive)
 	mapfile -t CONTAINERS < <(echo "$CONTAINERS_OUTPUT" | grep -i "$PATTERN" || true)
 
 	if [ ${#CONTAINERS[@]} -eq 0 ]; then
-		die "No running containers found matching pattern: $PATTERN"
+		# Show available containers to help user
+		AVAILABLE=$(echo "$CONTAINERS_OUTPUT" | cut -d'|' -f2 | tr '\n' ',' | sed 's/,$//' | sed 's/,/, /g')
+		die "No running containers found matching pattern: $PATTERN. Available containers: $AVAILABLE"
 	fi
 
 	if [ ${#CONTAINERS[@]} -eq 1 ]; then
@@ -143,10 +154,25 @@ in)
 		CONTAINER_ID="${CONTAINERS[0]%%|*}"
 		CONTAINER_NAME="${CONTAINERS[0]##*|}"
 		echo "Entering container: $CONTAINER_NAME"
+		# Try bash first, then sh if bash is not available
 		if [ "$USE_SUDO" -eq 1 ]; then
-			exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			# Check if bash is available in container
+			if sudo "$DOCKER_BIN" exec "$CONTAINER_ID" which bash >/dev/null 2>&1; then
+				exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			elif sudo "$DOCKER_BIN" exec "$CONTAINER_ID" which sh >/dev/null 2>&1; then
+				exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" sh
+			else
+				die "Neither bash nor sh found in container $CONTAINER_NAME"
+			fi
 		else
-			exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			# Check if bash is available in container
+			if "$DOCKER_BIN" exec "$CONTAINER_ID" which bash >/dev/null 2>&1; then
+				exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			elif "$DOCKER_BIN" exec "$CONTAINER_ID" which sh >/dev/null 2>&1; then
+				exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" sh
+			else
+				die "Neither bash nor sh found in container $CONTAINER_NAME"
+			fi
 		fi
 	else
 		# Multiple matches - show menu
@@ -176,10 +202,25 @@ in)
 
 		echo ""
 		echo "Entering container: $CONTAINER_NAME"
+		# Try bash first, then sh if bash is not available
 		if [ "$USE_SUDO" -eq 1 ]; then
-			exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			# Check if bash is available in container
+			if sudo "$DOCKER_BIN" exec "$CONTAINER_ID" which bash >/dev/null 2>&1; then
+				exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			elif sudo "$DOCKER_BIN" exec "$CONTAINER_ID" which sh >/dev/null 2>&1; then
+				exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" sh
+			else
+				die "Neither bash nor sh found in container $CONTAINER_NAME"
+			fi
 		else
-			exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			# Check if bash is available in container
+			if "$DOCKER_BIN" exec "$CONTAINER_ID" which bash >/dev/null 2>&1; then
+				exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+			elif "$DOCKER_BIN" exec "$CONTAINER_ID" which sh >/dev/null 2>&1; then
+				exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" sh
+			else
+				die "Neither bash nor sh found in container $CONTAINER_NAME"
+			fi
 		fi
 	fi
 	;;
