@@ -4,7 +4,7 @@ set -euo pipefail
 # ====== Your repo ======
 REPO_OWNER="melihcelenk"
 REPO_NAME="MyLinuxHelper"
-REPO_BRANCH="bug/bookmark-list-category-hierarchy"
+REPO_BRANCH="bookmark-list-category-hierarchy"
 # =======================
 
 REPO_TARBALL_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
@@ -64,23 +64,25 @@ download_repo() {
 	if command -v git >/dev/null 2>&1; then
 		if [ -d "${INSTALL_DIR}/.git" ]; then
 			green "Updating repo (git pull)…"
-			# Fetch all branches including remote branches with slashes
+			# Fetch the specific branch from origin
+			git -C "${INSTALL_DIR}" fetch origin "${REPO_BRANCH}:${REPO_BRANCH}" --depth=1 2>/dev/null || \
 			git -C "${INSTALL_DIR}" fetch origin --depth=1
-			# Check if branch exists locally, if not create tracking branch
-			if ! git -C "${INSTALL_DIR}" rev-parse --verify "${REPO_BRANCH}" >/dev/null 2>&1; then
-				# Branch doesn't exist locally, create tracking branch
-				git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null || \
-				git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null || \
+			# Checkout the branch (create local tracking branch if needed)
+			git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null || \
+			git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null || {
+				# If branch doesn't exist, try to fetch without depth limit first
+				git -C "${INSTALL_DIR}" fetch origin
 				git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}"
-			else
-				# Branch exists locally, switch to it
-				git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}"
-			fi
-			# Reset to remote branch
-			git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}"
+			}
+			# Reset to remote branch to ensure we're up to date
+			git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}" 2>/dev/null || \
+			git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}"
 		else
 			green "Cloning repo (git)…"
-			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || {
+				# If shallow clone fails, try full clone
+				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			}
 		fi
 	else
 		green "Downloading repo (tarball)…"
@@ -88,25 +90,19 @@ download_repo() {
 		mkdir -p "${INSTALL_DIR}.tmp"
 		local dlr
 		dlr="$(ensure_downloader)"
-		# GitHub tarball URLs with branch names containing slashes need URL encoding
-		# Replace / with %2F in branch name for tarball URL
-		local encoded_branch
-		encoded_branch=$(echo "${REPO_BRANCH}" | sed 's|/|%2F|g')
-		local tarball_url="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${encoded_branch}"
+		# GitHub tarball URL (no encoding needed for simple branch names)
+		local tarball_url="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
 		if [ "$dlr" = "curl" ]; then
 			curl -fsSL "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		else
 			wget -qO- "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		fi
 		rm -rf "${INSTALL_DIR}"
-		# Tarball extracts to directory with branch name (slashes replaced with dashes in some cases, or URL encoded)
-		# Try different possible directory names
+		# Tarball extracts to directory with branch name
 		if [ -d "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" ]; then
 			mv "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" "${INSTALL_DIR}"
-		elif [ -d "${INSTALL_DIR}.tmp/${REPO_NAME}-$(echo "${REPO_BRANCH}" | sed 's|/|-|g')" ]; then
-			mv "${INSTALL_DIR}.tmp/${REPO_NAME}-$(echo "${REPO_BRANCH}" | sed 's|/|-|g')" "${INSTALL_DIR}"
 		else
-			# Find the extracted directory
+			# Find the extracted directory (fallback)
 			local extracted_dir
 			extracted_dir=$(find "${INSTALL_DIR}.tmp" -mindepth 1 -maxdepth 1 -type d | head -1)
 			if [ -n "$extracted_dir" ]; then
