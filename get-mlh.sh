@@ -69,8 +69,8 @@ download_repo() {
 			# Try to checkout the branch
 			if git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null; then
 				# Branch exists locally, pull latest changes
-				git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}" 2>/dev/null || \
-				git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}" 2>/dev/null
+				git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}" 2>/dev/null ||
+					git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}" 2>/dev/null
 			elif git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null; then
 				# Successfully created tracking branch
 				:
@@ -78,13 +78,13 @@ download_repo() {
 				# Branch doesn't exist, remove and re-clone
 				green "Branch not found, re-cloning repository…"
 				rm -rf "${INSTALL_DIR}"
-				git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || \
-				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+				git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null ||
+					git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
 			fi
 		else
 			green "Cloning repo (git)…"
-			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || \
-			git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null ||
+				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
 		fi
 	else
 		green "Downloading repo (tarball)…"
