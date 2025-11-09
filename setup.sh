@@ -25,6 +25,17 @@ BOOKMARK_ALIAS=""
 if [ -f "$MLH_CONFIG_FILE" ]; then
 	# shellcheck source=/dev/null
 	source "$MLH_CONFIG_FILE" 2>/dev/null || true
+else
+	# Config file doesn't exist - create it from example if available
+	EXAMPLE_CONFIG="$ROOT_DIR/docs/config/mlh.conf.example"
+	if [ -f "$EXAMPLE_CONFIG" ]; then
+		mkdir -p "$MLH_CONFIG_DIR"
+		cp "$EXAMPLE_CONFIG" "$MLH_CONFIG_FILE"
+		echo "Created config file: $MLH_CONFIG_FILE"
+		echo "  (copied from example with default BOOKMARK_ALIAS=bm)"
+		# shellcheck source=/dev/null
+		source "$MLH_CONFIG_FILE" 2>/dev/null || true
+	fi
 fi
 
 # 1) Ensure ~/.local/bin exists and added to PATH for future shells
