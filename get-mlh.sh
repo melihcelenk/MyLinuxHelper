@@ -64,8 +64,19 @@ download_repo() {
 	if command -v git >/dev/null 2>&1; then
 		if [ -d "${INSTALL_DIR}/.git" ]; then
 			green "Updating repo (git pull)…"
-			git -C "${INSTALL_DIR}" fetch --all --depth=1
-			git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}"
+			# Fetch all branches including remote branches with slashes
+			git -C "${INSTALL_DIR}" fetch origin --depth=1
+			# Check if branch exists locally, if not create tracking branch
+			if ! git -C "${INSTALL_DIR}" rev-parse --verify "${REPO_BRANCH}" >/dev/null 2>&1; then
+				# Branch doesn't exist locally, create tracking branch
+				git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null || \
+				git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null || \
+				git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}"
+			else
+				# Branch exists locally, switch to it
+				git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}"
+			fi
+			# Reset to remote branch
 			git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}"
 		else
 			green "Cloning repo (git)…"
@@ -77,13 +88,34 @@ download_repo() {
 		mkdir -p "${INSTALL_DIR}.tmp"
 		local dlr
 		dlr="$(ensure_downloader)"
+		# GitHub tarball URLs with branch names containing slashes need URL encoding
+		# Replace / with %2F in branch name for tarball URL
+		local encoded_branch
+		encoded_branch=$(echo "${REPO_BRANCH}" | sed 's|/|%2F|g')
+		local tarball_url="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${encoded_branch}"
 		if [ "$dlr" = "curl" ]; then
-			curl -fsSL "${REPO_TARBALL_URL}" | tar -xz -C "${INSTALL_DIR}.tmp"
+			curl -fsSL "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		else
-			wget -qO- "${REPO_TARBALL_URL}" | tar -xz -C "${INSTALL_DIR}.tmp"
+			wget -qO- "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		fi
 		rm -rf "${INSTALL_DIR}"
-		mv "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" "${INSTALL_DIR}"
+		# Tarball extracts to directory with branch name (slashes replaced with dashes in some cases, or URL encoded)
+		# Try different possible directory names
+		if [ -d "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" ]; then
+			mv "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" "${INSTALL_DIR}"
+		elif [ -d "${INSTALL_DIR}.tmp/${REPO_NAME}-$(echo "${REPO_BRANCH}" | sed 's|/|-|g')" ]; then
+			mv "${INSTALL_DIR}.tmp/${REPO_NAME}-$(echo "${REPO_BRANCH}" | sed 's|/|-|g')" "${INSTALL_DIR}"
+		else
+			# Find the extracted directory
+			local extracted_dir
+			extracted_dir=$(find "${INSTALL_DIR}.tmp" -mindepth 1 -maxdepth 1 -type d | head -1)
+			if [ -n "$extracted_dir" ]; then
+				mv "$extracted_dir" "${INSTALL_DIR}"
+			else
+				echo "Error: Could not find extracted directory"
+				exit 1
+			fi
+		fi
 		rm -rf "${INSTALL_DIR}.tmp"
 	fi
 }
