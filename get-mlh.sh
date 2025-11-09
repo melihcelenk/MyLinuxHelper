@@ -137,8 +137,6 @@ cleanup_unnecessary_files() {
 		"CLAUDE.md"
 		"docs/BOOKMARK_ALIAS_GUIDE.md"
 		"docs/BOOKMARK_QUICK_REFERENCE.md"
-		"docs/RELEASE_NOTES_v1.5.0.md"
-		"docs/RELEASE_NOTES_v1.5.1.md"
 		"docs/assets"
 		".github"
 		"TODO.md"
