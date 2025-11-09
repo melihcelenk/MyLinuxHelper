@@ -112,8 +112,8 @@ in)
 
 	# Test Docker access and determine if sudo is needed
 	# Strategy: Always try without sudo first, if it fails with permission error, use sudo
-	DOCKER_TEST_CMD="$DOCKER_BIN ps --format '{{.ID}}'"
-	DOCKER_TEST_OUTPUT=$($DOCKER_TEST_CMD 2>&1)
+	# Use array to avoid ShellCheck warning about command substitution in string
+	DOCKER_TEST_OUTPUT=$("$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
 	DOCKER_TEST_EXIT=$?
 
 	# Check if we need sudo
@@ -125,7 +125,7 @@ in)
 				# Check if we're in an interactive terminal (TTY)
 				if [ -t 0 ] && [ -t 1 ]; then
 					# Interactive mode: Try sudo (may prompt for password)
-					SUDO_TEST_OUTPUT=$(sudo $DOCKER_TEST_CMD 2>&1)
+					SUDO_TEST_OUTPUT=$(sudo "$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
 					SUDO_TEST_EXIT=$?
 					if [ $SUDO_TEST_EXIT -eq 0 ]; then
 						USE_SUDO=1
@@ -140,7 +140,7 @@ in)
 				else
 					# Non-interactive mode: Cannot prompt for password
 					# Check if sudo can work without password (NOPASSWD)
-					SUDO_TEST_OUTPUT=$(sudo -n $DOCKER_TEST_CMD 2>&1)
+					SUDO_TEST_OUTPUT=$(sudo -n "$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
 					SUDO_TEST_EXIT=$?
 					if [ $SUDO_TEST_EXIT -eq 0 ]; then
 						USE_SUDO=1
