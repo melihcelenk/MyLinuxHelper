@@ -64,19 +64,23 @@ download_repo() {
 	if command -v git >/dev/null 2>&1; then
 		if [ -d "${INSTALL_DIR}/.git" ]; then
 			green "Updating repo (git pull)…"
-			# Fetch the specific branch from origin
-			git -C "${INSTALL_DIR}" fetch origin "${REPO_BRANCH}:${REPO_BRANCH}" --depth=1 2>/dev/null || \
-			git -C "${INSTALL_DIR}" fetch origin --depth=1
-			# Checkout the branch (create local tracking branch if needed)
-			git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null || \
-			git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null || {
-				# If branch doesn't exist, try to fetch without depth limit first
-				git -C "${INSTALL_DIR}" fetch origin
-				git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}"
-			}
-			# Reset to remote branch to ensure we're up to date
-			git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}" 2>/dev/null || \
-			git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}"
+			# First, fetch all branches to ensure we have the remote branch
+			git -C "${INSTALL_DIR}" fetch origin 2>/dev/null || true
+			# Try to checkout the branch
+			if git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null; then
+				# Branch exists locally, pull latest changes
+				git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}" 2>/dev/null || \
+				git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}" 2>/dev/null
+			elif git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null; then
+				# Successfully created tracking branch
+				:
+			else
+				# Branch doesn't exist, remove and re-clone
+				green "Branch not found, re-cloning repository…"
+				rm -rf "${INSTALL_DIR}"
+				git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || \
+				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			fi
 		else
 			green "Cloning repo (git)…"
 			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || {
