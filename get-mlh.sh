@@ -4,7 +4,7 @@ set -euo pipefail
 # ====== Your repo ======
 REPO_OWNER="melihcelenk"
 REPO_NAME="MyLinuxHelper"
-REPO_BRANCH="bookmark-list-category-hierarchy"
+REPO_BRANCH="main"
 # =======================
 
 REPO_TARBALL_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
@@ -94,12 +94,11 @@ download_repo() {
 		mkdir -p "${INSTALL_DIR}.tmp"
 		local dlr
 		dlr="$(ensure_downloader)"
-		# GitHub tarball URL (no encoding needed for simple branch names)
-		local tarball_url="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
+		# Use REPO_TARBALL_URL variable (already defined above)
 		if [ "$dlr" = "curl" ]; then
-			curl -fsSL "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
+			curl -fsSL "${REPO_TARBALL_URL}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		else
-			wget -qO- "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
+			wget -qO- "${REPO_TARBALL_URL}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		fi
 		rm -rf "${INSTALL_DIR}"
 		# Tarball extracts to directory with branch name
