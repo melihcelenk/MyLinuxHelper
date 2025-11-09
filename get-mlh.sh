@@ -96,6 +96,49 @@ ensure_local_bin_on_path() {
 	grep -Fq "$line" "$PROFILE" 2>/dev/null || echo "$line" >>"$PROFILE"
 }
 
+cleanup_unnecessary_files() {
+	green "Cleaning up unnecessary files…"
+
+	# List of files/directories to remove (user doesn't need these)
+	# NOTE: .git is NOT removed - it's needed for git pull/update functionality
+	local cleanup_items=(
+		"tests"
+		"CLAUDE.md"
+		"docs/BOOKMARK_ALIAS_GUIDE.md"
+		"docs/BOOKMARK_QUICK_REFERENCE.md"
+		"docs/RELEASE_NOTES_v1.5.0.md"
+		"docs/RELEASE_NOTES_v1.5.1.md"
+		"docs/assets"
+		".github"
+		"TODO.md"
+		".gitignore"
+	)
+
+	# Keep docs/config/mlh.conf.example (needed for setup.sh)
+	# Keep README.md (useful for users)
+	# Keep LICENSE (required)
+	# Keep .git (needed for git pull/update functionality)
+
+	for item in "${cleanup_items[@]}"; do
+		local item_path="${INSTALL_DIR}/${item}"
+		if [ -e "$item_path" ]; then
+			rm -rf "$item_path"
+			echo "  Removed: $item"
+		fi
+	done
+
+	# Clean up docs directory if it's now empty (except config/)
+	if [ -d "${INSTALL_DIR}/docs" ]; then
+		# Check if docs only contains config/ directory
+		local docs_contents
+		docs_contents=$(find "${INSTALL_DIR}/docs" -mindepth 1 -maxdepth 1 ! -name "config" | wc -l)
+		if [ "$docs_contents" -eq 0 ]; then
+			# Keep docs/config, but we can leave docs/ as is since it only has config/
+			:
+		fi
+	fi
+}
+
 run_repo_setup() {
 	green "Running repository setup…"
 	chmod +x "${INSTALL_DIR}/setup.sh" || true
@@ -105,6 +148,8 @@ run_repo_setup() {
 main() {
 	green "Installing ${REPO_NAME} into ${INSTALL_DIR}"
 	download_repo
+	# Cleanup unnecessary files (both git and tarball methods include development files)
+	cleanup_unnecessary_files
 	ensure_local_bin_on_path
 	run_repo_setup
 	green "Done. Try:"

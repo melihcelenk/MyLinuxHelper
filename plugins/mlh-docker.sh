@@ -65,8 +65,18 @@ case "$COMMAND" in
 	;;
 in)
 	# Check if docker is available (only for actual commands)
+	# Try to find docker in common locations if not in PATH (for sudo usage)
 	if ! command -v docker >/dev/null 2>&1; then
-		die "Docker is not installed or not in PATH"
+		# Check common docker locations
+		if [ -x "/usr/bin/docker" ]; then
+			DOCKER_CMD="/usr/bin/docker"
+		elif [ -x "/usr/local/bin/docker" ]; then
+			DOCKER_CMD="/usr/local/bin/docker"
+		else
+			die "Docker is not installed or not in PATH"
+		fi
+	else
+		DOCKER_CMD="docker"
 	fi
 
 	# Enter container by pattern
@@ -77,7 +87,7 @@ in)
 	PATTERN="$1"
 
 	# Find matching containers (running only)
-	mapfile -t CONTAINERS < <(docker ps --format "{{.ID}}|{{.Names}}" | grep -i "$PATTERN" || true)
+	mapfile -t CONTAINERS < <("$DOCKER_CMD" ps --format "{{.ID}}|{{.Names}}" | grep -i "$PATTERN" || true)
 
 	if [ ${#CONTAINERS[@]} -eq 0 ]; then
 		die "No running containers found matching pattern: $PATTERN"
@@ -88,7 +98,7 @@ in)
 		CONTAINER_ID="${CONTAINERS[0]%%|*}"
 		CONTAINER_NAME="${CONTAINERS[0]##*|}"
 		echo "Entering container: $CONTAINER_NAME"
-		exec docker exec -it "$CONTAINER_ID" bash
+		exec "$DOCKER_CMD" exec -it "$CONTAINER_ID" bash
 	else
 		# Multiple matches - show menu
 		echo "Multiple containers found matching '$PATTERN':"
@@ -98,7 +108,7 @@ in)
 			CONTAINER_NAME="${CONTAINERS[$i]##*|}"
 			CONTAINER_ID="${CONTAINERS[$i]%%|*}"
 			# Get container image and status
-			CONTAINER_INFO=$(docker ps --filter "id=$CONTAINER_ID" --format "{{.Image}} | {{.Status}}" | head -1)
+			CONTAINER_INFO=$("$DOCKER_CMD" ps --filter "id=$CONTAINER_ID" --format "{{.Image}} | {{.Status}}" | head -1)
 			echo "  $((i + 1)). $CONTAINER_NAME ($CONTAINER_INFO)"
 		done
 
@@ -117,7 +127,7 @@ in)
 
 		echo ""
 		echo "Entering container: $CONTAINER_NAME"
-		exec docker exec -it "$CONTAINER_ID" bash
+		exec "$DOCKER_CMD" exec -it "$CONTAINER_ID" bash
 	fi
 	;;
 *)

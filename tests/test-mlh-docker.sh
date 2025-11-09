@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
 # test-mlh-docker.sh - Test suite for mlh-docker.sh
+#
+# This file is sourced by the main test runner (./tests/test)
+# It should NOT be executed directly
 
 # Disable strict mode for tests
 set +euo pipefail 2>/dev/null || true
 set +e
+
+# ROOT_DIR should be set by test runner when sourced
+# If not set, try to determine it from script location (for direct execution)
+if [ -z "${ROOT_DIR:-}" ]; then
+	# Try to determine ROOT_DIR from script location
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+	ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+fi
 
 PLUGIN_SCRIPT="$ROOT_DIR/plugins/mlh-docker.sh"
 
@@ -108,7 +119,9 @@ fi
 # ============================================================
 
 # Test 13: Script uses docker ps for listing containers
-if grep -q "docker ps" "$PLUGIN_SCRIPT"; then
+# Accept both direct 'docker ps' and variable-based 'DOCKER_CMD.*ps' patterns
+# The script uses "$DOCKER_CMD" ps, so we check for DOCKER_CMD and ps together
+if grep -qE '(docker ps|DOCKER_CMD.*ps)' "$PLUGIN_SCRIPT"; then
 	print_test_result "Script uses 'docker ps' to list containers" "PASS"
 else
 	print_test_result "Script uses 'docker ps' to list containers" "FAIL"
@@ -136,7 +149,9 @@ else
 fi
 
 # Test 17: Script uses docker exec to enter containers
-if grep -q "docker exec -it" "$PLUGIN_SCRIPT"; then
+# Accept both direct 'docker exec -it' and variable-based 'DOCKER_CMD.*exec' patterns
+# The script uses "$DOCKER_CMD" exec -it, so we check for DOCKER_CMD and exec together
+if grep -qE '(docker exec -it|DOCKER_CMD.*exec)' "$PLUGIN_SCRIPT"; then
 	print_test_result "Script uses 'docker exec -it' to enter" "PASS"
 else
 	print_test_result "Script uses 'docker exec -it' to enter" "FAIL"
