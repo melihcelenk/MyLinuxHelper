@@ -27,6 +27,12 @@ The setup script automatically:
 - Creates symlinks for all commands in `~/.local/bin`
 - Adds `~/.local/bin` to PATH in `~/.bashrc` and `~/.profile`
 - Makes all plugin scripts executable
+- Installs wrapper functions in `~/.bashrc`:
+    - `mlh()` wrapper: Ensures current session history is visible
+    - `bookmark()` wrapper: Enables `cd` functionality for bookmark navigation
+    - `<alias>()` wrapper: Creates custom alias if configured (e.g., `bm()`)
+- Creates symlink for bookmark alias if configured
+- Shows warning message when `.bashrc` is updated (reminds user to run `source ~/.bashrc`)
 - Re-execs the shell if commands aren't immediately available
 
 ## Architecture
@@ -104,18 +110,182 @@ Key feature: Automatically mounts the MyLinuxHelper repository at `/opt/mlh` ins
 - Manual updates via `mlh update`
 - Periodic update configuration (daily/weekly/monthly)
 - Auto-update hooks in `~/.bashrc`
+- **Automatic shell reload**: After update, automatically reloads shell with `exec bash -l`
 
 Configuration is stored in `~/.mylinuxhelper/.update-config`.
 
+**Update Process:**
+
+1. Downloads `get-mlh.sh` from GitHub
+2. Runs installation (updates files, runs `setup.sh`)
+3. Automatically reloads shell to apply wrapper functions and updates
+4. No manual `source ~/.bashrc` required
+
+### Quick Directory Bookmarks
+
+`mlh-bookmark.sh` provides a fast navigation system with hierarchical organization:
+
+**Features (Phase 1, 2 & 3 Complete):**
+
+- **Numbered stack**: Quick save/restore (max 10 bookmarks, auto re-numbering on delete)
+- **Named bookmarks**: Persistent bookmarks with memorable names
+- **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Interactive menu**: Full-featured TUI with arrow key navigation (`bookmark list -i`)
+    - Navigate with ↑/↓ or j/k (vim-style)
+    - Jump, edit, delete bookmarks in real-time
+    - Hierarchical category display
+    - Built-in help menu ('h' key)
+- **Category filtering**: List and filter by category
+- **Move bookmarks**: Relocate bookmarks between categories
+- **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
+- **Bookmark management**: Edit, remove, clear operations
+- **JSON storage**: `~/.mylinuxhelper/bookmarks.json`
+- **Shell integration**: Wrapper function enables instant `cd` navigation
+
+**Architecture:**
+
+- Stack-based unnamed bookmarks (LIFO, auto-rotating)
+- Named bookmarks with category support and access tracking
+- Command name conflict detection (prevents naming conflicts with system commands)
+- Path validation with warnings (⚠ symbol for missing paths)
+- jq-based JSON manipulation
+- Bash wrapper function for parent shell directory changes
+
+**Usage patterns:**
+
+```bash
+bookmark .                      # Save current dir (becomes #1)
+bookmark 1                      # Jump to bookmark #1
+bookmark . -n myproject         # Save with name
+bookmark . -n mlh in projects   # Save with category
+bookmark myproject              # Jump to named bookmark
+bookmark list                   # Show all bookmarks (grouped by category)
+bookmark list -i                # Interactive menu (arrow keys, edit, delete)
+bookmark list projects          # Filter by category
+bookmark mv mlh to tools        # Move bookmark to different category
+bookmark edit myproject         # Edit bookmark (name/path/category)
+bookmark rm myproject           # Remove bookmark
+bookmark rm 2                   # Remove #2 (auto re-numbers remaining)
+bookmark find java              # Search bookmarks
+bookmark clear                  # Clear all numbered bookmarks
+```
+
+**Wrapper Function (setup.sh):**
+
+The `setup.sh` script automatically installs a wrapper function in `~/.bashrc` that enables `cd` functionality:
+
+- When jumping to bookmarks (`bookmark 1` or `bookmark name`), the wrapper evaluates the output
+- The script outputs a `cd` command that the wrapper executes in the parent shell
+- Other commands (`list`, `mv`, save operations) pass through normally
+
+**Alias Support:**
+
+Users can configure a custom shortcut/alias for the bookmark command:
+
+- Configuration file: `~/.mylinuxhelper/mlh.conf`
+- Format: `BOOKMARK_ALIAS=bm` (or any alphanumeric name)
+- After configuration, run `setup.sh` and `source ~/.bashrc`
+- Aliases delegate to the main bookmark function (full feature support)
+- **Important**: `setup.sh` creates both a symlink AND a wrapper function. The function takes precedence and enables
+  `cd` functionality in interactive mode. Even if a symlink exists, the function is added to `.bashrc` because functions
+  execute before commands/symlinks.
+- Command conflict detection: Real system commands are warned about, but the function is still added (functions take
+  precedence)
+- Help dynamically shows alias name in examples when configured
+- See `docs/BOOKMARK_ALIAS_GUIDE.md` for detailed setup instructions
+
+**Storage format:**
+
+```json
+{
+   "bookmarks": {
+      "named": [
+         {
+            name,
+            path,
+            category,
+            created,
+            accessed,
+            access_count
+         }
+      ],
+      "unnamed": [
+         {
+            id,
+            path,
+            created
+         }
+      ]
+   },
+   "config": {
+      max_unnamed: 10,
+      auto_cleanup: true
+   }
+}
+```
+
 ## Testing & Development
+
+### Test Execution (Project-Specific)
+
+**Docker command for this project:**
+
+```bash
+docker run --rm -v "//c/Kodlar/Python-Bash-Bat/MyLinuxHelper://mlh" ubuntu:22.04 bash -c \
+  "cd /mlh && apt-get update -qq && apt-get install -y -qq jq >/dev/null 2>&1 && \
+   bash tests/test <test-name>"
+```
+
+**Local testing:**
+
+```bash
+bash tests/test <test-name>
+```
+
+### Automated Testing
+
+The test suite uses a standardized framework:
+
+```bash
+# Run all tests
+bash tests/test
+
+# Run specific test suite
+bash tests/test bookmark/mlh-bookmark
+# Or use legacy format (still works)
+bash tests/test mlh-bookmark
+
+# Test output format
+✓ PASS: Test description
+✗ FAIL: Test description
+  Error details
+⊘ SKIP: Test description
+  Reason for skip
+```
+
+**Test File Structure:**
+
+```bash
+tests/
+├── test                              # Main test runner
+├── bookmark/
+│   ├── test-mlh-bookmark.sh             # Bookmark feature tests (80 tests - Phase 1, 2 & 3 + bug fixes)
+│   ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
+│   └── test-bookmark-alias-integration.sh # Alias integration tests (12 tests)
+├── test-mlh-history.sh              # History feature tests
+├── test-mlh-json.sh                 # JSON validation tests
+└── ...
+```
 
 ### Manual Testing
 
 After making changes to any plugin script:
 
 1. Run `./setup.sh` to refresh symlinks and permissions
-2. Test the command directly (e.g., `mlh docker in test`)
-3. Test both standalone mode and via `mlh` dispatcher
+2. **Run automated tests**: `bash tests/test <component>`
+3. **Verify all tests pass** before proceeding
+4. Test the command directly (e.g., `mlh docker in test`)
+5. Test both standalone mode and via `mlh` dispatcher
 
 ### Common Development Patterns
 
@@ -180,24 +350,87 @@ When releasing a new version:
    readonly VERSION="X.Y.Z"
    readonly VERSION_DATE="DD.MM.YYYY"
    ```
-2. Commit and push to main branch
-3. Users can update via `mlh update`
+2. Create/update `RELEASE_NOTES_vX.Y.Z.md` with user-facing changes only
+3. Commit and push to main branch
+4. Users can update via `mlh update`
+
+### Release Notes Guidelines
+
+**Important:** Release notes should focus on **user-facing changes** since the last release tag, not internal bug fixes or refactoring.
+
+#### What to Include:
+- ✅ **New features** that users can see or use
+- ✅ **Behavior changes** that affect user workflow
+- ✅ **UI/UX improvements** (interactive modes, better output formatting)
+- ✅ **Configuration changes** (new config options, migration requirements)
+- ✅ **Breaking changes** (if any)
+- ✅ **Documentation updates** (new guides, improved examples)
+
+#### What to Exclude:
+- ❌ **Internal bug fixes** that don't change user-visible behavior
+- ❌ **Code refactoring** without functional changes
+- ❌ **Test improvements** (unless they fix user-reported issues)
+- ❌ **ShellCheck/formatting fixes** (code quality improvements)
+- ❌ **Internal tooling changes** (CI/CD, development workflow)
+
+#### Process:
+1. Identify the last release tag (e.g., `v1.4.1`)
+2. Review commits since that tag: `git log v1.4.1..HEAD --oneline`
+3. Filter for user-facing changes only
+4. Organize changes by category (Features, Enhancements, Bug Fixes, etc.)
+5. Update release notes file: `RELEASE_NOTES_vX.Y.Z.md`
+6. Update version number in `plugins/mlh-version.sh`
+7. Update release date in release notes
+
+**Example:**
+```bash
+# Check commits since last release
+git log v1.4.1..HEAD --oneline
+
+# Focus on commits that change user experience:
+# - "feat: Add new feature X"
+# - "Improve user workflow Y"
+# - "Fix user-visible bug Z"
+
+# Ignore internal changes:
+# - "Fix ShellCheck warnings"
+# - "Refactor internal function"
+# - "Update test coverage"
+```
 
 ## File Structure
 
 ```
 /
 ├── get-mlh.sh          # Bootstrap installer (downloads repo)
-├── setup.sh            # Creates symlinks and configures PATH
+├── setup.sh            # Creates symlinks, configures PATH, installs wrapper functions
 ├── install.sh          # Universal package installer (provides 'i' command)
-└── plugins/
-    ├── mlh.sh          # Main command dispatcher with interactive menu
-    ├── mlh-docker.sh   # Docker container shortcuts
-    ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
-    ├── mlh-version.sh  # Version management and auto-update system
-    ├── mlh-about.sh    # Project information
-    ├── linux.sh        # Docker container lifecycle management
-    ├── search.sh       # File search using find
-    ├── isjsonvalid.sh  # Centralized JSON validation engine
-    └── ll.sh           # ls -la shortcut
+├── README.md           # User documentation with usage examples
+├── CLAUDE.md           # Development documentation (this file)
+├── TODO.md             # Feature roadmap and implementation checklist
+├── .gitignore          # Ignore IDE files, OS files, runtime data
+├── plugins/
+│   ├── mlh.sh          # Main command dispatcher with interactive menu
+│   ├── mlh-bookmark.sh # Quick directory bookmarks (JSON-based, category support)
+│   ├── mlh-docker.sh   # Docker container shortcuts
+│   ├── mlh-json.sh     # JSON search (delegates validation to isjsonvalid.sh)
+│   ├── mlh-history.sh  # Enhanced command history with date tracking
+│   ├── mlh-version.sh  # Version management and auto-update system
+│   ├── mlh-about.sh    # Project information
+│   ├── linux.sh        # Docker container lifecycle management
+│   ├── search.sh       # File search using find
+│   ├── isjsonvalid.sh  # Centralized JSON validation engine
+│   └── ll.sh           # ls -la shortcut
+└── tests/
+    ├── test                              # Main test runner framework (285+ tests total)
+    ├── bookmark/
+    │   ├── test-mlh-bookmark.sh             # Bookmark tests (80 tests, requires jq)
+    │   ├── test-bookmark-alias.sh           # Bookmark alias tests (28 tests)
+    │   └── test-bookmark-alias-integration.sh # Alias integration tests (12 tests)
+    ├── test-mlh-history.sh              # History tests (34 tests)
+    ├── test-mlh-json.sh                 # JSON validation tests (18 tests)
+    ├── test-mlh-docker.sh               # Docker tests (18 tests)
+    ├── test-current-session.sh          # Session history tests (1 test)
+    ├── test-time-debug.sh               # Time parsing tests (4 tests)
+    └── ...
 ```

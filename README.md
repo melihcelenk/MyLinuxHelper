@@ -5,6 +5,7 @@ A lightweight and modular collection of utility tools to simplify your Linux exp
 ## Features
 
 - **Interactive Command Menu**: Browse and explore all commands with the `mlh` interactive menu
+- **Quick Directory Bookmarks**: Save and jump to frequently used directories with the `bookmark` command
 - **Smart Docker Management**: Quickly enter running containers by name pattern with `mlh docker in`
 - **Enhanced Command History**: View command history with dates, search commands, and filter by date range using `mlh history`
 - **Fast File Search**: Find files quickly in current directory and subdirectories with the `search` command
@@ -23,11 +24,13 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/melihcelenk/MyLinuxHelpe
 || bash -c "$(wget -qO- https://raw.githubusercontent.com/melihcelenk/MyLinuxHelper/main/get-mlh.sh)"
 ```
 
+After installation, you can configure a custom shortcut for the `bookmark` command (e.g., `bm`) by editing `~/.mylinuxhelper/mlh.conf` and running `./setup.sh` again. See the [Bookmark Alias Guide](docs/BOOKMARK_ALIAS_GUIDE.md) for details.
+
 ## 🚀 Usage
 
-### Available Commands
+---
 
-#### `mlh` - Interactive Command Menu
+### 📋 `mlh` - Interactive Command Menu
 Browse all available commands interactively:
 ```bash
 # Show interactive menu
@@ -55,7 +58,9 @@ MyLinuxHelper - Available Commands
 Select [1-5, q]:
 ```
 
-#### `mlh docker in` - Smart Container Access
+---
+
+### 🐳 `mlh docker in` - Smart Container Access
 Enter running Docker containers by name pattern:
 ```bash
 # Enter container by name
@@ -71,7 +76,90 @@ mlh docker in web
 # Select container [1-3]: 1
 ```
 
-#### `linux` - Container Management
+---
+
+### 🔖 `bookmark` - Quick Directory Bookmarks
+
+Save and jump to frequently used directories instantly:
+
+> **💡 Configurable Shortcut:** Configure your preferred alias (e.g., `bm`, `fav`, `goto`) in `~/.mylinuxhelper/mlh.conf`:
+> ```bash
+> BOOKMARK_ALIAS=bm
+> ```
+> Then run `./setup.sh` to apply. The alias works with all bookmark features!  
+> Use `bm --help` to see examples with your configured shortcut.
+
+```bash
+# Save current directory (numbered bookmark)
+bookmark .    # or: bm .
+
+# Jump to bookmark 1 (most recent)
+bookmark 1    # or: bm 1
+
+# Save with a memorable name
+bookmark . -n myproject    # or: bm . -n myproject
+
+# Jump to named bookmark
+bookmark myproject    # or: bm myproject
+
+# Save with category for organization
+bookmark . -n mlh in projects/linux    # or: bm . -n mlh in projects/linux
+bookmark . -n api in projects/java     # or: bm . -n api in projects/java
+
+# List all bookmarks (interactive TUI by default)
+bookmark list    # or: bm list
+
+# Non-interactive simple output
+bookmark list -n    # or: bm list -n
+
+# List specific category
+bookmark list projects    # or: bm list projects
+
+# Move bookmark to different category
+bookmark mv mlh to tools    # or: bm mv mlh to tools
+
+# Show last 5 numbered bookmarks
+bookmark list 5    # or: bm list 5
+
+# Rename numbered bookmark
+bookmark 1 -n webapp    # or: bm 1 -n webapp
+
+# Edit bookmark (name/path/category)
+bookmark edit mlh    # or: bm edit mlh
+
+# Remove bookmark
+bookmark rm oldproject    # or: bm rm oldproject
+bookmark rm 3              # or: bm rm 3
+
+# Search bookmarks
+bookmark find java    # or: bm find java
+
+# Clear all numbered bookmarks
+bookmark clear    # or: bm clear
+
+# View help (dynamically shows your configured shortcut)
+bookmark --help    # or: bm --help
+```
+
+**Key Features:**
+
+- **Configurable shortcut alias**: Use `bm` (or your preferred shortcut) instead of typing `bookmark` every time! Configure in `~/.mylinuxhelper/mlh.conf`
+- **Stack-based numbered bookmarks**: Quick access to last 10 directories (auto-rotating, auto re-numbering)
+- **Named bookmarks**: Save important locations with memorable names
+- **Hierarchical categories**: Organize bookmarks (e.g., `projects/linux`, `projects/java`)
+- **Interactive menu by default**: Navigate with arrow keys, edit, delete, search in real-time (`bookmark list` - no `-i` flag needed!)
+- **Category filtering**: List bookmarks by category
+- **Smart search**: Find bookmarks by name, path, or category (`bookmark find <pattern>`)
+- **Path validation**: Warns when bookmark path no longer exists
+- **Name conflict detection**: Prevents conflicts with system commands (both for bookmarks and aliases)
+- **Bookmark management**: Edit, remove, clear bookmarks easily
+- **Instant navigation**: Jump to bookmarks without typing full paths
+- **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
+- **Dynamic help**: Help messages automatically adapt to show your configured shortcut
+
+---
+
+### 📦 `linux` - Container Management
 Launch and manage isolated Linux containers quickly:
 ```bash
 # Create ephemeral container (auto-removed on exit)
@@ -93,7 +181,9 @@ linux -i debian:12 mycontainer
 linux -m "$PWD:/workspace" -p mycontainer
 ```
 
-#### `mlh history` - Enhanced Command History
+---
+
+### 📜 `mlh history` - Enhanced Command History
 View command history with dates, search, and filtering:
 ```bash
 # Show last 100 commands (default)
@@ -139,7 +229,9 @@ mlh history -c
 - **Helpful messages**: When no results found, shows latest command timestamp with suggestions
 - **Non-intrusive**: Doesn't affect the system `history` command
 
-#### `i` - Smart Package Installer
+---
+
+### 📥 `i` - Smart Package Installer
 Automatically detects your package manager (apt, yum, dnf, etc.) and installs packages:
 ```bash
 # Install a package
@@ -152,7 +244,9 @@ i git curl wget
 i --help
 ```
 
-#### `mlh json` / `isjsonvalid` - JSON Operations
+---
+
+### 🔍 `mlh json` / `isjsonvalid` - JSON Operations
 Advanced JSON validation and fuzzy search with intelligent path navigation:
 ```bash
 # Quick validation (Yes/No output)
@@ -196,7 +290,10 @@ mlh json --help
 - Interactive menu for multiple matches
 - Auto-installs `jq` if needed
 
-#### `ll` - Enhanced Directory Listing
+---
+
+### 📁 `ll` - Enhanced Directory Listing
+
 Shortcut for `ls -la` to view detailed file information:
 ```bash
 # List current directory
@@ -209,7 +306,10 @@ ll /var/log
 ll *.json
 ```
 
-#### `search` - Fast File Search
+---
+
+### 🔎 `search` - Fast File Search
+
 Find files quickly in current directory and subdirectories:
 ```bash
 # Search for file by name
@@ -231,10 +331,16 @@ search "*.conf" /etc
 
 ```
 /
-├── setup.sh            # Main setup script
-├── install.sh          # Universal package installer
+├── get-mlh.sh          # Bootstrap installer (downloads repo)
+├── setup.sh            # Main setup script (creates symlinks, configures PATH)
+├── install.sh          # Universal package installer (provides 'i' command)
+├── README.md           # User documentation with usage examples
+├── CLAUDE.md           # Development documentation
+├── TODO.md             # Feature roadmap and implementation checklist
+├── LICENSE             # Project license
 ├── plugins/
 │   ├── mlh.sh          # Interactive menu and command dispatcher
+│   ├── mlh-bookmark.sh # Quick directory bookmarks (JSON-based, category support)
 │   ├── mlh-docker.sh   # Docker shortcuts and container management
 │   ├── mlh-history.sh  # Enhanced command history with dates, search, and filtering
 │   ├── mlh-json.sh     # Advanced JSON search (delegates validation to isjsonvalid.sh)
@@ -243,23 +349,37 @@ search "*.conf" /etc
 │   ├── linux.sh        # Launch and manage Docker containers
 │   ├── search.sh       # Fast file search using find
 │   ├── isjsonvalid.sh  # Centralized JSON validation with flexible output modes
+│   ├── bookmark-alias.sh # Bookmark alias proxy (delegates to mlh-bookmark.sh)
 │   └── ll.sh           # Shortcut for "ls -la"
+├── docs/
+│   ├── BOOKMARK_ALIAS_GUIDE.md        # Comprehensive alias setup guide
+│   ├── BOOKMARK_QUICK_REFERENCE.md    # Quick reference for bookmark commands
+│   ├── RELEASE_NOTES_v1.5.0.md        # Release notes for v1.5.0
+│   └── config/
+│       └── mlh.conf.example           # Example configuration file
 └── tests/
-    ├── test                    # Main test runner (161 tests)
-    ├── test-mlh-history.sh     # 34 tests - Command history
-    ├── test-linux.sh           # 15 tests - Container management
-    ├── test-mlh-json.sh        # 18 tests - JSON operations
-    ├── test-mlh-docker.sh      # 18 tests - Docker shortcuts
-    ├── test-mlh.sh             # 20 tests - Main dispatcher
-    ├── test-search.sh          # 16 tests - File search
-    ├── test-isjsonvalid.sh     # 18 tests - JSON validation
-    ├── test-ll.sh              # 10 tests - Directory listing
-    └── test-mlh-about.sh       # 12 tests - About page
+    ├── test                                    # Main test runner (293 tests)
+    ├── bookmark/
+    │   ├── test-mlh-bookmark.sh                # 80 tests - Bookmark functionality
+    │   ├── test-bookmark-alias.sh              # 28 tests - Alias configuration
+    │   └── test-bookmark-alias-integration.sh  # 13 tests - Alias integration
+    ├── test-mlh-history.sh                     # 34 tests - Command history
+    ├── test-linux.sh                           # 15 tests - Container management
+    ├── test-mlh-json.sh                        # 18 tests - JSON operations
+    ├── test-mlh-docker.sh                      # 18 tests - Docker shortcuts
+    ├── test-mlh.sh                             # 20 tests - Main dispatcher
+    ├── test-search.sh                          # 16 tests - File search
+    ├── test-isjsonvalid.sh                     # 18 tests - JSON validation
+    ├── test-ll.sh                              # 10 tests - Directory listing
+    ├── test-mlh-about.sh                       # 12 tests - About page
+    ├── test-shellcheck.sh                      # 6 tests - Code quality validation
+    ├── test-current-session.sh                 # 1 test - Session history
+    └── test-time-debug.sh                      # 4 tests - Time parsing
 ```
 
 ## 🧪 Testing
 
-MyLinuxHelper includes a comprehensive test suite with **161 tests** covering all major functionality.
+MyLinuxHelper includes a comprehensive test suite with **293 tests** covering all major functionality.
 
 ### Running Tests
 
@@ -277,25 +397,36 @@ MyLinuxHelper includes a comprehensive test suite with **161 tests** covering al
 ./tests/test ll
 ./tests/test mlh-about
 ./tests/test mlh
+./tests/test shellcheck
+
+# Run bookmark tests (subdirectory)
+./tests/test bookmark/mlh-bookmark
+./tests/test bookmark/bookmark-alias
+./tests/test bookmark/bookmark-alias-integration
 ```
 
 ### Test Coverage
 
-✅ **161 total tests** with **100% success rate** (0 failing tests)
+✅ **293 total tests** with **288 passed** (98.3% success rate)
 
-> **Note:** 8 tests in `mlh-json.sh` gracefully skip if `jq` is not installed. With `jq` installed, all 161 tests pass.
+> **Note:** Some tests gracefully skip if dependencies are missing (e.g., `jq` for JSON tests, `shellcheck` for code quality tests, `tmux` for interactive tests).
 
-**Completed Test Suites:**
+**Test Suites:**
 
-1. **mlh-history.sh** (34 tests) - Command history, time parsing, filtering
-2. **linux.sh** (15 tests) - Container management, Docker commands
-3. **mlh-json.sh** (18 tests) - JSON search, validation, fuzzy matching
-4. **mlh-docker.sh** (18 tests) - Container access, pattern matching
-5. **mlh.sh** (20 tests) - Main dispatcher, routing, interactive menu
-6. **search.sh** (16 tests) - File search, wildcards, error handling
-7. **isjsonvalid.sh** (18 tests) - JSON validation engine, output modes
-8. **ll.sh** (10 tests) - Directory listing wrapper
-9. **mlh-about.sh** (12 tests) - Project information display
+1. **bookmark/mlh-bookmark.sh** (80 tests) - Bookmark functionality, interactive mode, categories
+2. **bookmark/bookmark-alias.sh** (28 tests) - Alias configuration and validation
+3. **bookmark/bookmark-alias-integration.sh** (13 tests) - Alias integration with setup.sh
+4. **mlh-history.sh** (34 tests) - Command history, time parsing, filtering
+5. **linux.sh** (15 tests) - Container management, Docker commands
+6. **mlh-json.sh** (18 tests) - JSON search, validation, fuzzy matching
+7. **mlh-docker.sh** (18 tests) - Container access, pattern matching
+8. **mlh.sh** (20 tests) - Main dispatcher, routing, interactive menu
+9. **search.sh** (16 tests) - File search, wildcards, error handling
+10. **isjsonvalid.sh** (18 tests) - JSON validation engine, output modes
+11. **ll.sh** (10 tests) - Directory listing wrapper
+12. **mlh-about.sh** (12 tests) - Project information display
+13. **shellcheck** (6 tests) - Code quality validation (requires shellcheck)
+14. **current-session** (1 test) - Session history tracking
 
 ### Test Framework Features
 
@@ -317,14 +448,14 @@ shfmt -w .
 shellcheck plugins/*.sh tests/*.sh
 ```
 
-**ShellCheck Compliance:**
+**Code Quality:**
 
-- ✅ All SC2155 warnings fixed (separate declare and assign)
-- ✅ No unused variables
-- ✅ Proper error handling with `set -euo pipefail`
-- ✅ Clean syntax validation
+- ✅ **ShellCheck Compliance**: All scripts pass ShellCheck validation (automated test suite)
+- ✅ **Formatting**: All scripts formatted with `shfmt` for consistency
+- ✅ **Best Practices**: Proper error handling with `set -euo pipefail`
+- ✅ **Clean Syntax**: No unused variables, proper quoting, safe command execution
 
-See `TEST_PLAN.md` for detailed testing strategy and `PROGRESS.md` for current status.
+The test suite includes automated ShellCheck validation to ensure code quality across all scripts.
 
 ## 🔧 Development
 

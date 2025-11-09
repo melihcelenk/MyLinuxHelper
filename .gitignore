@@ -1,0 +1,70 @@
+# IDE & Editor directories
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+*.orig
+
+# Test artifacts
+test-results/
+coverage/
+*.test
+*.out
+
+# MyLinuxHelper runtime files
+.mylinuxhelper/bookmarks.json
+.mylinuxhelper/.update-config
+.mylinuxhelper/cache/
+
+# Node modules (if any scripts use Node)
+node_modules/
+package-lock.json
+
+# Python cache (if any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+*.o
+*.so
+*.dylib
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# Personal notes/drafts
+NOTES.md
+DRAFT*.md
+SCRATCH*.md
+notes/
+drafts/
+
+# Release artifacts
+*.tar.gz
+*.zip
+*.tar.bz2
+releases/
