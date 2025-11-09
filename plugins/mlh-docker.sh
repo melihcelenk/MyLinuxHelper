@@ -86,21 +86,6 @@ in)
 
 	PATTERN="$1"
 
-	# Try to list containers first to check if we need sudo
-	# If docker ps fails with permission error, try with sudo
-	if ! "$DOCKER_BIN" ps >/dev/null 2>&1; then
-		# Check if it's a permission error (not just no containers)
-		DOCKER_ERROR=$("$DOCKER_BIN" ps 2>&1)
-		if echo "$DOCKER_ERROR" | grep -qi "permission denied\|cannot connect to the docker daemon"; then
-			# Try with sudo
-			if command -v sudo >/dev/null 2>&1; then
-				USE_SUDO=1
-			else
-				die "Docker requires sudo permissions. Install sudo or add user to docker group."
-			fi
-		fi
-	fi
-
 	# Helper function to run docker command (with or without sudo)
 	run_docker() {
 		if [ "$USE_SUDO" -eq 1 ]; then
@@ -110,8 +95,44 @@ in)
 		fi
 	}
 
+	# Test Docker access and determine if sudo is needed
+	# First, try without sudo
+	DOCKER_TEST_OUTPUT=$("$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
+	DOCKER_TEST_EXIT=$?
+
+	if [ $DOCKER_TEST_EXIT -ne 0 ]; then
+		# Docker command failed - check if it's a permission/connection error
+		# Common error patterns: permission denied, cannot connect, permission denied while trying to connect
+		if echo "$DOCKER_TEST_OUTPUT" | grep -qiE "permission denied|cannot connect to the docker daemon|Got permission denied|permission denied while trying to connect"; then
+			# Permission/connection error - try with sudo
+			if command -v sudo >/dev/null 2>&1; then
+				# Test if sudo docker works
+				SUDO_TEST_OUTPUT=$(sudo "$DOCKER_BIN" ps --format "{{.ID}}" 2>&1)
+				SUDO_TEST_EXIT=$?
+				if [ $SUDO_TEST_EXIT -eq 0 ]; then
+					USE_SUDO=1
+				else
+					# Sudo also failed - show the error
+					die "Cannot access Docker daemon even with sudo. Error: $SUDO_TEST_OUTPUT"
+				fi
+			else
+				die "Docker requires sudo permissions but sudo is not available. Install sudo or add user to docker group. Original error: $DOCKER_TEST_OUTPUT"
+			fi
+		else
+			# Other error (not permission related) - could be daemon not running, etc.
+			die "Docker command failed: $DOCKER_TEST_OUTPUT"
+		fi
+	fi
+
 	# Find matching containers (running only)
-	mapfile -t CONTAINERS < <(run_docker ps --format "{{.ID}}|{{.Names}}" 2>/dev/null | grep -i "$PATTERN" || true)
+	CONTAINERS_OUTPUT=$(run_docker ps --format "{{.ID}}|{{.Names}}" 2>&1)
+	CONTAINERS_EXIT=$?
+
+	if [ $CONTAINERS_EXIT -ne 0 ]; then
+		die "Failed to list Docker containers: $CONTAINERS_OUTPUT"
+	fi
+
+	mapfile -t CONTAINERS < <(echo "$CONTAINERS_OUTPUT" | grep -i "$PATTERN" || true)
 
 	if [ ${#CONTAINERS[@]} -eq 0 ]; then
 		die "No running containers found matching pattern: $PATTERN"
