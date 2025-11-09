@@ -4,7 +4,7 @@ set -euo pipefail
 # ====== Your repo ======
 REPO_OWNER="melihcelenk"
 REPO_NAME="MyLinuxHelper"
-REPO_BRANCH="release/test"
+REPO_BRANCH="bookmark-list-category-hierarchy"
 # =======================
 
 REPO_TARBALL_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
@@ -64,12 +64,29 @@ download_repo() {
 	if command -v git >/dev/null 2>&1; then
 		if [ -d "${INSTALL_DIR}/.git" ]; then
 			green "Updating repo (git pull)…"
-			git -C "${INSTALL_DIR}" fetch --all --depth=1
-			git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}"
-			git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}"
+			# First, fetch all branches to ensure we have the remote branch
+			git -C "${INSTALL_DIR}" fetch origin 2>/dev/null || true
+			# Try to checkout the branch
+			if git -C "${INSTALL_DIR}" checkout "${REPO_BRANCH}" 2>/dev/null; then
+				# Branch exists locally, pull latest changes
+				git -C "${INSTALL_DIR}" pull origin "${REPO_BRANCH}" 2>/dev/null || \
+				git -C "${INSTALL_DIR}" reset --hard "origin/${REPO_BRANCH}" 2>/dev/null
+			elif git -C "${INSTALL_DIR}" checkout -b "${REPO_BRANCH}" "origin/${REPO_BRANCH}" 2>/dev/null; then
+				# Successfully created tracking branch
+				:
+			else
+				# Branch doesn't exist, remove and re-clone
+				green "Branch not found, re-cloning repository…"
+				rm -rf "${INSTALL_DIR}"
+				git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || \
+				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			fi
 		else
 			green "Cloning repo (git)…"
-			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			git clone --depth=1 --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}" 2>/dev/null || {
+				# If shallow clone fails, try full clone
+				git clone --branch "${REPO_BRANCH}" "${REPO_GIT_URL}" "${INSTALL_DIR}"
+			}
 		fi
 	else
 		green "Downloading repo (tarball)…"
@@ -77,13 +94,28 @@ download_repo() {
 		mkdir -p "${INSTALL_DIR}.tmp"
 		local dlr
 		dlr="$(ensure_downloader)"
+		# GitHub tarball URL (no encoding needed for simple branch names)
+		local tarball_url="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
 		if [ "$dlr" = "curl" ]; then
-			curl -fsSL "${REPO_TARBALL_URL}" | tar -xz -C "${INSTALL_DIR}.tmp"
+			curl -fsSL "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		else
-			wget -qO- "${REPO_TARBALL_URL}" | tar -xz -C "${INSTALL_DIR}.tmp"
+			wget -qO- "${tarball_url}" | tar -xz -C "${INSTALL_DIR}.tmp"
 		fi
 		rm -rf "${INSTALL_DIR}"
-		mv "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" "${INSTALL_DIR}"
+		# Tarball extracts to directory with branch name
+		if [ -d "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" ]; then
+			mv "${INSTALL_DIR}.tmp/${REPO_NAME}-${REPO_BRANCH}" "${INSTALL_DIR}"
+		else
+			# Find the extracted directory (fallback)
+			local extracted_dir
+			extracted_dir=$(find "${INSTALL_DIR}.tmp" -mindepth 1 -maxdepth 1 -type d | head -1)
+			if [ -n "$extracted_dir" ]; then
+				mv "$extracted_dir" "${INSTALL_DIR}"
+			else
+				echo "Error: Could not find extracted directory"
+				exit 1
+			fi
+		fi
 		rm -rf "${INSTALL_DIR}.tmp"
 	fi
 }
