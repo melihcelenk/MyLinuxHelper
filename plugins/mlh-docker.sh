@@ -71,6 +71,12 @@ in)
 	DOCKER_BIN=""
 	USE_SUDO=0
 
+	# Unset DOCKER_HOST if it points to Docker Desktop (which may not be running)
+	# This ensures we use the system Docker daemon at /var/run/docker.sock
+	if [ -n "${DOCKER_HOST:-}" ] && echo "$DOCKER_HOST" | grep -q "docker-desktop\|\.docker/desktop"; then
+		unset DOCKER_HOST
+	fi
+
 	if command -v docker >/dev/null 2>&1; then
 		DOCKER_BIN="docker"
 	elif [ -x "/usr/bin/docker" ]; then
