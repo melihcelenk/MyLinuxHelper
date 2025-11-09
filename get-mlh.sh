@@ -148,6 +148,7 @@ run_repo_setup() {
 main() {
 	green "Installing ${REPO_NAME} into ${INSTALL_DIR}"
 	download_repo
+	# Cleanup unnecessary files (both git and tarball methods include development files)
 	cleanup_unnecessary_files
 	ensure_local_bin_on_path
 	run_repo_setup

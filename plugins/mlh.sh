@@ -81,11 +81,12 @@ MyLinuxHelper - App Settings & Updates
 1. Show current version
 2. Update to latest version
 3. Configure periodic updates
-4. Back to main menu
+4. Uninstall MyLinuxHelper
+5. Back to main menu
 
 EOF
 
-		read -rp "Select [1-4]: " SETTING_SELECTION
+		read -rp "Select [1-5]: " SETTING_SELECTION
 		echo ""
 
 		case "$SETTING_SELECTION" in
@@ -100,7 +101,12 @@ EOF
 		3)
 			exec "$SCRIPT_DIR/mlh-version.sh" update -p
 			;;
-		4 | b | B)
+		4)
+			"$SCRIPT_DIR/mlh-version.sh" uninstall
+			echo ""
+			read -rp "Press Enter to continue..."
+			;;
+		5 | b | B)
 			return 0
 			;;
 		*)
