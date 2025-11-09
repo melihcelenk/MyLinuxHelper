@@ -89,9 +89,10 @@ in)
 	PATTERN="$1"
 
 	# Helper function to run docker command (with or without sudo)
+	# Use sudo -E to preserve environment variables (especially PATH)
 	run_docker() {
 		if [ "$USE_SUDO" -eq 1 ]; then
-			sudo "$DOCKER_BIN" "$@"
+			sudo -E "$DOCKER_BIN" "$@"
 		else
 			"$DOCKER_BIN" "$@"
 		fi
@@ -107,17 +108,41 @@ in)
 	if [ $DOCKER_TEST_EXIT -ne 0 ]; then
 		# Check if it's a permission error
 		if echo "$DOCKER_TEST_OUTPUT" | grep -qiE "permission denied|cannot connect to the docker daemon|Got permission denied|permission denied while trying to connect|dial unix.*permission denied"; then
-			# Try with sudo
+			# Try with sudo (but handle password prompts gracefully)
 			if command -v sudo >/dev/null 2>&1; then
-				SUDO_TEST_OUTPUT=$(sudo $DOCKER_TEST_CMD 2>&1)
-				SUDO_TEST_EXIT=$?
-				if [ $SUDO_TEST_EXIT -eq 0 ]; then
-					USE_SUDO=1
+				# Check if we're in an interactive terminal (TTY)
+				if [ -t 0 ] && [ -t 1 ]; then
+					# Interactive mode: Try sudo (may prompt for password)
+					SUDO_TEST_OUTPUT=$(sudo $DOCKER_TEST_CMD 2>&1)
+					SUDO_TEST_EXIT=$?
+					if [ $SUDO_TEST_EXIT -eq 0 ]; then
+						USE_SUDO=1
+					else
+						# Check if it's a password prompt error
+						if echo "$SUDO_TEST_OUTPUT" | grep -qiE "password is required|a terminal is required"; then
+							die "Docker requires sudo permissions, but password authentication failed. Please run: sudo mlh docker in $PATTERN"
+						else
+							die "Cannot access Docker daemon even with sudo. Error: $SUDO_TEST_OUTPUT"
+						fi
+					fi
 				else
-					die "Cannot access Docker daemon even with sudo. Error: $SUDO_TEST_OUTPUT"
+					# Non-interactive mode: Cannot prompt for password
+					# Check if sudo can work without password (NOPASSWD)
+					SUDO_TEST_OUTPUT=$(sudo -n $DOCKER_TEST_CMD 2>&1)
+					SUDO_TEST_EXIT=$?
+					if [ $SUDO_TEST_EXIT -eq 0 ]; then
+						USE_SUDO=1
+					else
+						# Sudo requires password but we're non-interactive
+						die "Docker requires sudo permissions, but we're in a non-interactive session. Please either:
+  1. Run this command in an interactive terminal: mlh docker in $PATTERN
+  2. Or run with sudo directly: sudo mlh docker in $PATTERN
+  3. Or add your user to the docker group: sudo usermod -aG docker \$USER (then logout/login)
+Original error: $DOCKER_TEST_OUTPUT"
+					fi
 				fi
 			else
-				die "Docker requires sudo permissions. Error: $DOCKER_TEST_OUTPUT"
+				die "Docker requires sudo permissions, but sudo is not available. Error: $DOCKER_TEST_OUTPUT"
 			fi
 		else
 			# Other error
