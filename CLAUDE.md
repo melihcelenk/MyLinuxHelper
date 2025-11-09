@@ -358,18 +358,42 @@ When releasing a new version:
 
 **Important:** Release notes should focus on **user-facing changes** since the last release tag, not internal bug fixes or refactoring.
 
-#### What to Include:
-- ✅ **New features** that users can see or use
-- ✅ **Behavior changes** that affect user workflow
-- ✅ **UI/UX improvements** (interactive modes, better output formatting)
-- ✅ **Configuration changes** (new config options, migration requirements)
-- ✅ **Breaking changes** (if any)
+#### Release Notes Standards
+
+**General Principles:**
+- Each release note document focuses **only on changes in that specific version**
+- Previous versions' content is **not included** (except for reference like "Previous Version: v1.5.0")
+- Users can read individual release notes to see what changed in each version
+- This allows quick understanding of changes without reading through cumulative lists
+
+**Version Types:**
+- **Bug fix releases (patch versions like 1.5.1):** Document only the bug fixes
+  - Focus on what was broken and how it's fixed
+  - Include impact and migration notes if needed
+  - Example: `RELEASE_NOTES_v1.5.1.md` (hierarchical category display fix)
+- **Feature releases (minor versions like 1.6.0):** Document new features and enhancements
+  - New features, improvements, and user-visible changes
+  - Include migration guides if behavior changes
+  - Example: `RELEASE_NOTES_v1.5.0.md` (configurable bookmark shortcuts)
+- **Major releases (2.0.0):** Document breaking changes and major updates
+  - Breaking changes, major architecture changes
+  - Migration guides required
+  - Deprecation notices
+
+**What to Include:**
+- ✅ **User-facing changes** that affect behavior or features
+- ✅ **Bug fixes** that users might notice or benefit from
+- ✅ **Breaking changes** and migration guides
+- ✅ **New features** and enhancements
 - ✅ **Documentation updates** (new guides, improved examples)
 
-#### What to Exclude:
+**What to Exclude:**
+- ❌ **Internal refactoring** without functional changes
+- ❌ **Code quality improvements** (unless they fix user-reported issues)
+- ❌ **Test improvements** (unless they fix user-visible bugs)
+- ❌ **Previous version content** (users can read older release notes separately)
 - ❌ **Internal bug fixes** that don't change user-visible behavior
 - ❌ **Code refactoring** without functional changes
-- ❌ **Test improvements** (unless they fix user-reported issues)
 - ❌ **ShellCheck/formatting fixes** (code quality improvements)
 - ❌ **Internal tooling changes** (CI/CD, development workflow)
 
@@ -421,6 +445,15 @@ git log v1.4.1..HEAD --oneline
 │   ├── search.sh       # File search using find
 │   ├── isjsonvalid.sh  # Centralized JSON validation engine
 │   └── ll.sh           # ls -la shortcut
+├── docs/
+│   ├── BOOKMARK_ALIAS_GUIDE.md        # Comprehensive alias setup guide
+│   ├── BOOKMARK_QUICK_REFERENCE.md    # Quick reference for bookmark commands
+│   ├── RELEASE_NOTES_v1.5.1.md        # Release notes for v1.5.1
+│   ├── RELEASE_NOTES_v1.5.0.md        # Release notes for v1.5.0
+│   ├── assets/
+│   │   └── MLH-Bookmark.gif           # Bookmark demo animation
+│   └── config/
+│       └── mlh.conf.example           # Example configuration file
 └── tests/
     ├── test                              # Main test runner framework (285+ tests total)
     ├── bookmark/
