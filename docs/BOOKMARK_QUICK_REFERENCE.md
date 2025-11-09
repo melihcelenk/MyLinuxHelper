@@ -2,6 +2,8 @@
 
 Quick directory bookmarking and navigation system.
 
+![Bookmark Demo](assets/MLH-Bookmark.gif)
+
 ## 🚀 Quick Start
 
 ### Basic Operations

@@ -14,9 +14,9 @@
 
 set -euo pipefail
 
-readonly VERSION="1.5.0"
+readonly VERSION="1.5.1"
 # shellcheck disable=SC2034
-readonly VERSION_DATE="08.11.2025"
+readonly VERSION_DATE="09.11.2025"
 # shellcheck disable=SC2034
 readonly FIRST_RELEASE_DATE="11.10.2025"
 readonly GITHUB_REPO="melihcelenk/MyLinuxHelper"
@@ -24,6 +24,9 @@ readonly INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/ma
 readonly CONFIG_DIR="${HOME}/.mylinuxhelper"
 readonly UPDATE_CONFIG="${CONFIG_DIR}/.update-config"
 readonly BASHRC="${HOME}/.bashrc"
+readonly PROFILE="${HOME}/.profile"
+readonly LOCAL_BIN="${HOME}/.local/bin"
+readonly USR_LOCAL_BIN="/usr/local/bin"
 
 print_version() {
 	echo "MyLinuxHelper v${VERSION}"
@@ -40,11 +43,13 @@ Usage:
   mlh -v update              Update to latest version
   mlh update                 Update to latest version
   mlh update -p              Configure periodic updates
+  mlh --version uninstall    Uninstall MyLinuxHelper
 
 Examples:
   mlh --version              # Display: MyLinuxHelper v1.3.0
   mlh --version update       # Update to latest version from GitHub
   mlh update -p              # Configure automatic periodic updates
+  mlh --version uninstall    # Uninstall MyLinuxHelper (with confirmation)
 EOF
 }
 
@@ -233,6 +238,335 @@ update_to_latest() {
 	fi
 }
 
+uninstall_mlh() {
+	echo "MyLinuxHelper Uninstall"
+	echo "======================="
+	echo ""
+	echo "This will remove:"
+	echo "  - ~/.mylinuxhelper directory"
+	echo "  - Symlinks in ~/.local/bin (bookmark, bm, i, isjsonvalid, ll, linux, mlh, search)"
+	echo "  - Symlinks in /usr/local/bin (if installed there)"
+	echo "  - MyLinuxHelper entries from ~/.bashrc"
+	echo "  - MyLinuxHelper entries from ~/.profile"
+	echo ""
+	echo "⚠️  WARNING: This action cannot be undone!"
+	echo ""
+
+	read -rp "Are you sure you want to uninstall MyLinuxHelper? (type 'yes' to confirm): " CONFIRM
+	echo ""
+
+	if [ "$CONFIRM" != "yes" ]; then
+		echo "Uninstall cancelled."
+		return 0
+	fi
+
+	echo "Uninstalling MyLinuxHelper..."
+	echo ""
+
+	# Remove symlinks from ~/.local/bin
+	local symlinks=("bookmark" "i" "isjsonvalid" "ll" "linux" "mlh" "search")
+	local bookmark_alias=""
+
+	# Check if bookmark alias exists in config
+	if [ -f "${CONFIG_DIR}/mlh.conf" ]; then
+		# shellcheck source=/dev/null
+		source "${CONFIG_DIR}/mlh.conf" 2>/dev/null || true
+		if [ -n "${BOOKMARK_ALIAS:-}" ]; then
+			bookmark_alias="$BOOKMARK_ALIAS"
+		fi
+	fi
+
+	# Remove symlinks
+	for link in "${symlinks[@]}"; do
+		local link_path="${LOCAL_BIN}/${link}"
+		if [ -L "$link_path" ] || [ -f "$link_path" ]; then
+			rm -f "$link_path"
+			echo "  Removed: $link_path"
+		fi
+	done
+
+	# Remove bookmark alias symlink if exists
+	if [ -n "$bookmark_alias" ]; then
+		local alias_path="${LOCAL_BIN}/${bookmark_alias}"
+		if [ -L "$alias_path" ] || [ -f "$alias_path" ]; then
+			rm -f "$alias_path"
+			echo "  Removed: $alias_path"
+		fi
+	fi
+
+	# Remove symlinks from /usr/local/bin (if they exist and point to our plugins)
+	if [ -d "$USR_LOCAL_BIN" ] && command -v sudo >/dev/null 2>&1; then
+		for link in "${symlinks[@]}"; do
+			local link_path="${USR_LOCAL_BIN}/${link}"
+			if [ -L "$link_path" ]; then
+				local target
+				target="$(readlink -f "$link_path" 2>/dev/null || readlink "$link_path" 2>/dev/null || echo "")"
+				if echo "$target" | grep -q "MyLinuxHelper\|mylinuxhelper"; then
+					# shellcheck disable=SC2024
+					if sudo rm -f "$link_path" 2>/dev/null; then
+						echo "  Removed: $link_path"
+					fi
+				fi
+			fi
+		done
+
+		# Remove bookmark alias from /usr/local/bin if exists
+		if [ -n "$bookmark_alias" ]; then
+			local alias_path="${USR_LOCAL_BIN}/${bookmark_alias}"
+			if [ -L "$alias_path" ]; then
+				local target
+				target="$(readlink -f "$alias_path" 2>/dev/null || readlink "$alias_path" 2>/dev/null || echo "")"
+				if echo "$target" | grep -q "MyLinuxHelper\|mylinuxhelper"; then
+					# shellcheck disable=SC2024
+					if sudo rm -f "$alias_path" 2>/dev/null; then
+						echo "  Removed: $alias_path"
+					fi
+				fi
+			fi
+		fi
+	fi
+
+	# Remove entries from ~/.bashrc
+	if [ -f "$BASHRC" ]; then
+		local bashrc_backup
+		bashrc_backup="${BASHRC}.mlh-backup-$(date +%s)"
+		cp "$BASHRC" "$bashrc_backup"
+		local temp_bashrc
+		temp_bashrc="$(mktemp)"
+
+		# Remove PATH export line
+		# shellcheck disable=SC2016
+		local path_line='export PATH="$HOME/.local/bin:$PATH"'
+		if grep -Fq "$path_line" "$BASHRC" 2>/dev/null; then
+			# Check if this is the only PATH modification (safe to remove)
+			local path_count
+			path_count=$(grep -c 'export PATH=.*\.local/bin' "$BASHRC" 2>/dev/null || echo "0")
+			if [ "$path_count" -eq 1 ]; then
+				grep -vF "$path_line" "$BASHRC" >"$temp_bashrc" 2>/dev/null || cp "$BASHRC" "$temp_bashrc"
+				mv "$temp_bashrc" "$BASHRC"
+				echo "  Removed PATH export from ~/.bashrc"
+			else
+				echo "  Note: Multiple PATH entries found, not removing (manual cleanup may be needed)"
+			fi
+		fi
+
+		# Remove mlh wrapper function (using Python for reliable multiline removal)
+		local mlh_marker="# MyLinuxHelper - mlh wrapper function"
+		if grep -Fq "$mlh_marker" "$BASHRC" 2>/dev/null; then
+			if command -v python3 >/dev/null 2>&1; then
+				python3 - "$BASHRC" "$mlh_marker" <<'PYEOF'
+import sys
+
+bashrc_file = sys.argv[1]
+marker = sys.argv[2]
+
+with open(bashrc_file, 'r') as f:
+    lines = f.readlines()
+
+output = []
+in_block = False
+brace_count = 0
+skip_next_empty = False
+
+for i, line in enumerate(lines):
+    if not in_block:
+        if marker in line:
+            in_block = True
+            brace_count = 0
+            skip_next_empty = (i > 0 and lines[i-1].strip() == '')
+            continue
+        else:
+            output.append(line)
+    else:
+        brace_count += line.count('{') - line.count('}')
+        if line.strip() == '}' and brace_count <= 0:
+            in_block = False
+            if skip_next_empty and output and output[-1].strip() == '':
+                output.pop()
+            continue
+
+with open(bashrc_file, 'w') as f:
+    f.writelines(output)
+PYEOF
+				echo "  Removed mlh wrapper function from ~/.bashrc"
+			else
+				# Fallback: simple sed (may not work perfectly for nested braces)
+				sed -i.bak "/${mlh_marker}/,/^}$/d" "$BASHRC" 2>/dev/null || true
+				echo "  Removed mlh wrapper function from ~/.bashrc (fallback method)"
+			fi
+		fi
+
+		# Remove bookmark wrapper function
+		local bookmark_marker="# MyLinuxHelper - bookmark wrapper function"
+		if grep -Fq "$bookmark_marker" "$BASHRC" 2>/dev/null; then
+			if command -v python3 >/dev/null 2>&1; then
+				python3 - "$BASHRC" "$bookmark_marker" <<'PYEOF'
+import sys
+
+bashrc_file = sys.argv[1]
+marker = sys.argv[2]
+
+with open(bashrc_file, 'r') as f:
+    lines = f.readlines()
+
+output = []
+in_block = False
+brace_count = 0
+skip_next_empty = False
+
+for i, line in enumerate(lines):
+    if not in_block:
+        if marker in line:
+            in_block = True
+            brace_count = 0
+            skip_next_empty = (i > 0 and lines[i-1].strip() == '')
+            continue
+        else:
+            output.append(line)
+    else:
+        brace_count += line.count('{') - line.count('}')
+        if line.strip() == '}' and brace_count <= 0:
+            in_block = False
+            if skip_next_empty and output and output[-1].strip() == '':
+                output.pop()
+            continue
+
+with open(bashrc_file, 'w') as f:
+    f.writelines(output)
+PYEOF
+				echo "  Removed bookmark wrapper function from ~/.bashrc"
+			else
+				sed -i.bak "/${bookmark_marker}/,/^}$/d" "$BASHRC" 2>/dev/null || true
+				echo "  Removed bookmark wrapper function from ~/.bashrc (fallback method)"
+			fi
+		fi
+
+		# Remove bookmark alias wrapper function if exists
+		if [ -n "$bookmark_alias" ]; then
+			local alias_marker="# MyLinuxHelper - ${bookmark_alias} alias wrapper"
+			if grep -Fq "$alias_marker" "$BASHRC" 2>/dev/null; then
+				if command -v python3 >/dev/null 2>&1; then
+					python3 - "$BASHRC" "$alias_marker" <<'PYEOF'
+import sys
+
+bashrc_file = sys.argv[1]
+marker = sys.argv[2]
+
+with open(bashrc_file, 'r') as f:
+    lines = f.readlines()
+
+output = []
+in_block = False
+brace_count = 0
+skip_next_empty = False
+
+for i, line in enumerate(lines):
+    if not in_block:
+        if marker in line:
+            in_block = True
+            brace_count = 0
+            skip_next_empty = (i > 0 and lines[i-1].strip() == '')
+            continue
+        else:
+            output.append(line)
+    else:
+        brace_count += line.count('{') - line.count('}')
+        if line.strip() == '}' and brace_count <= 0:
+            in_block = False
+            if skip_next_empty and output and output[-1].strip() == '':
+                output.pop()
+            continue
+
+with open(bashrc_file, 'w') as f:
+    f.writelines(output)
+PYEOF
+					echo "  Removed ${bookmark_alias} alias wrapper from ~/.bashrc"
+				else
+					sed -i.bak "/${alias_marker}/,/^}$/d" "$BASHRC" 2>/dev/null || true
+					echo "  Removed ${bookmark_alias} alias wrapper from ~/.bashrc (fallback method)"
+				fi
+			fi
+		fi
+
+		# Remove auto-update hook
+		local update_marker="# MyLinuxHelper auto-update check"
+		if grep -Fq "$update_marker" "$BASHRC" 2>/dev/null; then
+			if command -v python3 >/dev/null 2>&1; then
+				python3 - "$BASHRC" "$update_marker" <<'PYEOF'
+import sys
+
+bashrc_file = sys.argv[1]
+marker = sys.argv[2]
+
+with open(bashrc_file, 'r') as f:
+    lines = f.readlines()
+
+output = []
+in_block = False
+skip_next_empty = False
+
+for i, line in enumerate(lines):
+    if not in_block:
+        if marker in line:
+            in_block = True
+            skip_next_empty = (i > 0 and lines[i-1].strip() == '')
+            continue
+        else:
+            output.append(line)
+    else:
+        if line.strip() == 'fi':
+            in_block = False
+            if skip_next_empty and output and output[-1].strip() == '':
+                output.pop()
+            continue
+
+with open(bashrc_file, 'w') as f:
+    f.writelines(output)
+PYEOF
+				echo "  Removed auto-update hook from ~/.bashrc"
+			else
+				sed -i.bak "/${update_marker}/,/^fi$/d" "$BASHRC" 2>/dev/null || true
+				echo "  Removed auto-update hook from ~/.bashrc (fallback method)"
+			fi
+		fi
+
+		# Clean up temp and backup files
+		rm -f "$temp_bashrc" 2>/dev/null || true
+		rm -f "${BASHRC}.bak" 2>/dev/null || true
+		rm -f "$bashrc_backup" 2>/dev/null || true
+	fi
+
+	# Remove entries from ~/.profile
+	if [ -f "$PROFILE" ]; then
+		# shellcheck disable=SC2016
+		local path_line='export PATH="$HOME/.local/bin:$PATH"'
+		if grep -Fq "$path_line" "$PROFILE" 2>/dev/null; then
+			# Check if this is the only PATH modification (safe to remove)
+			local path_count
+			path_count=$(grep -c 'export PATH=.*\.local/bin' "$PROFILE" 2>/dev/null || echo "0")
+			if [ "$path_count" -eq 1 ]; then
+				sed -i.bak "\|${path_line}|d" "$PROFILE" 2>/dev/null || true
+				echo "  Removed PATH export from ~/.profile"
+				rm -f "${PROFILE}.bak" 2>/dev/null || true
+			else
+				echo "  Note: Multiple PATH entries found in ~/.profile, not removing (manual cleanup may be needed)"
+			fi
+		fi
+	fi
+
+	# Remove ~/.mylinuxhelper directory
+	if [ -d "$CONFIG_DIR" ]; then
+		rm -rf "$CONFIG_DIR"
+		echo "  Removed: ~/.mylinuxhelper"
+	fi
+
+	echo ""
+	echo "✅ Uninstall completed successfully!"
+	echo ""
+	echo "Note: You may need to restart your terminal or run 'source ~/.bashrc' to apply changes."
+	echo ""
+}
+
 main() {
 	if [ $# -eq 0 ]; then
 		print_version
@@ -262,6 +596,10 @@ main() {
 		;;
 	--check-update)
 		check_and_update
+		exit 0
+		;;
+	uninstall)
+		uninstall_mlh
 		exit 0
 		;;
 	*)

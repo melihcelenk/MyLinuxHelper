@@ -24,7 +24,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/melihcelenk/MyLinuxHelpe
 || bash -c "$(wget -qO- https://raw.githubusercontent.com/melihcelenk/MyLinuxHelper/main/get-mlh.sh)"
 ```
 
-After installation, you can configure a custom shortcut for the `bookmark` command (e.g., `bm`) by editing `~/.mylinuxhelper/mlh.conf` and running `./setup.sh` again. See the [Bookmark Alias Guide](docs/BOOKMARK_ALIAS_GUIDE.md) for details.
+After installation, you can configure a custom shortcut for the `bookmark` command (e.g., `bm`) by editing `~/.mylinuxhelper/mlh.conf` and setting `BOOKMARK_ALIAS=bm`, then running `setup.sh` in the installation directory to apply changes.
 
 ## 🚀 Usage
 
@@ -76,11 +76,48 @@ mlh docker in web
 # Select container [1-3]: 1
 ```
 
+> **💡 Note:** `mlh docker in` automatically detects if Docker requires sudo permissions and uses `sudo docker` when needed. You don't need to run `sudo mlh docker in` - just run `mlh docker in <pattern>` and it will handle sudo automatically if required.
+>
+> **⚠️ Troubleshooting:** If you get `mlh: command not found` when running `sudo mlh docker in`, it's because `sudo` resets the PATH. Solutions:
+> - **Recommended:** Run without sudo: `mlh docker in <pattern>` (script handles sudo internally)
+> - **Alternative:** Use `sudo -E env PATH=$PATH mlh docker in <pattern>` to preserve PATH
+> - **Best long-term:** Add your user to the docker group: `sudo usermod -aG docker $USER` (then logout/login)
+
+---
+
+### 📦 `linux` - Container Management
+
+Launch and manage isolated Linux containers quickly:
+
+![Linux & Docker Demo](docs/assets/MLH-Linux-Docker.gif)
+
+```bash
+# Create ephemeral container (auto-removed on exit)
+linux mycontainer
+
+# Create permanent container
+linux -p mycontainer
+
+# Stop container
+linux -s mycontainer
+
+# Delete container
+linux -d mycontainer
+
+# Use different base image
+linux -i debian:12 mycontainer
+
+# Bind mount directory
+linux -m "$PWD:/workspace" -p mycontainer
+```
+
 ---
 
 ### 🔖 `bookmark` - Quick Directory Bookmarks
 
 Save and jump to frequently used directories instantly:
+
+![Bookmark Demo](docs/assets/MLH-Bookmark.gif)
 
 > **💡 Configurable Shortcut:** Configure your preferred alias (e.g., `bm`, `fav`, `goto`) in `~/.mylinuxhelper/mlh.conf`:
 > ```bash
@@ -156,30 +193,6 @@ bookmark --help    # or: bm --help
 - **Instant navigation**: Jump to bookmarks without typing full paths
 - **JSON storage**: Bookmark data stored at `~/.mylinuxhelper/bookmarks.json`
 - **Dynamic help**: Help messages automatically adapt to show your configured shortcut
-
----
-
-### 📦 `linux` - Container Management
-Launch and manage isolated Linux containers quickly:
-```bash
-# Create ephemeral container (auto-removed on exit)
-linux mycontainer
-
-# Create permanent container
-linux -p mycontainer
-
-# Stop container
-linux -s mycontainer
-
-# Delete container
-linux -d mycontainer
-
-# Use different base image
-linux -i debian:12 mycontainer
-
-# Bind mount directory
-linux -m "$PWD:/workspace" -p mycontainer
-```
 
 ---
 
@@ -335,8 +348,6 @@ search "*.conf" /etc
 ├── setup.sh            # Main setup script (creates symlinks, configures PATH)
 ├── install.sh          # Universal package installer (provides 'i' command)
 ├── README.md           # User documentation with usage examples
-├── CLAUDE.md           # Development documentation
-├── TODO.md             # Feature roadmap and implementation checklist
 ├── LICENSE             # Project license
 ├── plugins/
 │   ├── mlh.sh          # Interactive menu and command dispatcher
@@ -352,29 +363,8 @@ search "*.conf" /etc
 │   ├── bookmark-alias.sh # Bookmark alias proxy (delegates to mlh-bookmark.sh)
 │   └── ll.sh           # Shortcut for "ls -la"
 ├── docs/
-│   ├── BOOKMARK_ALIAS_GUIDE.md        # Comprehensive alias setup guide
-│   ├── BOOKMARK_QUICK_REFERENCE.md    # Quick reference for bookmark commands
-│   ├── RELEASE_NOTES_v1.5.0.md        # Release notes for v1.5.0
 │   └── config/
 │       └── mlh.conf.example           # Example configuration file
-└── tests/
-    ├── test                                    # Main test runner (293 tests)
-    ├── bookmark/
-    │   ├── test-mlh-bookmark.sh                # 80 tests - Bookmark functionality
-    │   ├── test-bookmark-alias.sh              # 28 tests - Alias configuration
-    │   └── test-bookmark-alias-integration.sh  # 13 tests - Alias integration
-    ├── test-mlh-history.sh                     # 34 tests - Command history
-    ├── test-linux.sh                           # 15 tests - Container management
-    ├── test-mlh-json.sh                        # 18 tests - JSON operations
-    ├── test-mlh-docker.sh                      # 18 tests - Docker shortcuts
-    ├── test-mlh.sh                             # 20 tests - Main dispatcher
-    ├── test-search.sh                          # 16 tests - File search
-    ├── test-isjsonvalid.sh                     # 18 tests - JSON validation
-    ├── test-ll.sh                              # 10 tests - Directory listing
-    ├── test-mlh-about.sh                       # 12 tests - About page
-    ├── test-shellcheck.sh                      # 6 tests - Code quality validation
-    ├── test-current-session.sh                 # 1 test - Session history
-    └── test-time-debug.sh                      # 4 tests - Time parsing
 ```
 
 ## 🧪 Testing
