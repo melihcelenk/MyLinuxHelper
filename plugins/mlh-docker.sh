@@ -66,17 +66,17 @@ case "$COMMAND" in
 in)
 	# Check if docker is available (only for actual commands)
 	# Try to find docker in common locations if not in PATH (for sudo usage)
-	if ! command -v docker >/dev/null 2>&1; then
-		# Check common docker locations
-		if [ -x "/usr/bin/docker" ]; then
-			DOCKER_CMD="/usr/bin/docker"
-		elif [ -x "/usr/local/bin/docker" ]; then
-			DOCKER_CMD="/usr/local/bin/docker"
-		else
-			die "Docker is not installed or not in PATH"
-		fi
+	DOCKER_BIN=""
+	USE_SUDO=0
+
+	if command -v docker >/dev/null 2>&1; then
+		DOCKER_BIN="docker"
+	elif [ -x "/usr/bin/docker" ]; then
+		DOCKER_BIN="/usr/bin/docker"
+	elif [ -x "/usr/local/bin/docker" ]; then
+		DOCKER_BIN="/usr/local/bin/docker"
 	else
-		DOCKER_CMD="docker"
+		die "Docker is not installed or not in PATH"
 	fi
 
 	# Enter container by pattern
@@ -86,8 +86,32 @@ in)
 
 	PATTERN="$1"
 
+	# Try to list containers first to check if we need sudo
+	# If docker ps fails with permission error, try with sudo
+	if ! "$DOCKER_BIN" ps >/dev/null 2>&1; then
+		# Check if it's a permission error (not just no containers)
+		DOCKER_ERROR=$("$DOCKER_BIN" ps 2>&1)
+		if echo "$DOCKER_ERROR" | grep -qi "permission denied\|cannot connect to the docker daemon"; then
+			# Try with sudo
+			if command -v sudo >/dev/null 2>&1; then
+				USE_SUDO=1
+			else
+				die "Docker requires sudo permissions. Install sudo or add user to docker group."
+			fi
+		fi
+	fi
+
+	# Helper function to run docker command (with or without sudo)
+	run_docker() {
+		if [ "$USE_SUDO" -eq 1 ]; then
+			sudo "$DOCKER_BIN" "$@"
+		else
+			"$DOCKER_BIN" "$@"
+		fi
+	}
+
 	# Find matching containers (running only)
-	mapfile -t CONTAINERS < <("$DOCKER_CMD" ps --format "{{.ID}}|{{.Names}}" | grep -i "$PATTERN" || true)
+	mapfile -t CONTAINERS < <(run_docker ps --format "{{.ID}}|{{.Names}}" 2>/dev/null | grep -i "$PATTERN" || true)
 
 	if [ ${#CONTAINERS[@]} -eq 0 ]; then
 		die "No running containers found matching pattern: $PATTERN"
@@ -98,7 +122,11 @@ in)
 		CONTAINER_ID="${CONTAINERS[0]%%|*}"
 		CONTAINER_NAME="${CONTAINERS[0]##*|}"
 		echo "Entering container: $CONTAINER_NAME"
-		exec "$DOCKER_CMD" exec -it "$CONTAINER_ID" bash
+		if [ "$USE_SUDO" -eq 1 ]; then
+			exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+		else
+			exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+		fi
 	else
 		# Multiple matches - show menu
 		echo "Multiple containers found matching '$PATTERN':"
@@ -108,7 +136,7 @@ in)
 			CONTAINER_NAME="${CONTAINERS[$i]##*|}"
 			CONTAINER_ID="${CONTAINERS[$i]%%|*}"
 			# Get container image and status
-			CONTAINER_INFO=$("$DOCKER_CMD" ps --filter "id=$CONTAINER_ID" --format "{{.Image}} | {{.Status}}" | head -1)
+			CONTAINER_INFO=$(run_docker ps --filter "id=$CONTAINER_ID" --format "{{.Image}} | {{.Status}}" 2>/dev/null | head -1)
 			echo "  $((i + 1)). $CONTAINER_NAME ($CONTAINER_INFO)"
 		done
 
@@ -127,7 +155,11 @@ in)
 
 		echo ""
 		echo "Entering container: $CONTAINER_NAME"
-		exec "$DOCKER_CMD" exec -it "$CONTAINER_ID" bash
+		if [ "$USE_SUDO" -eq 1 ]; then
+			exec sudo "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+		else
+			exec "$DOCKER_BIN" exec -it "$CONTAINER_ID" bash
+		fi
 	fi
 	;;
 *)

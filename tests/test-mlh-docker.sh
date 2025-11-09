@@ -149,9 +149,10 @@ else
 fi
 
 # Test 17: Script uses docker exec to enter containers
-# Accept both direct 'docker exec -it' and variable-based 'DOCKER_CMD.*exec' patterns
-# The script uses "$DOCKER_CMD" exec -it, so we check for DOCKER_CMD and exec together
-if grep -qE '(docker exec -it|DOCKER_CMD.*exec)' "$PLUGIN_SCRIPT"; then
+# Accept various patterns: the script uses exec -it to enter containers
+# It may use DOCKER_BIN, run_docker function, or sudo
+# The key is that it uses 'exec -it' to enter containers
+if grep -q "exec -it" "$PLUGIN_SCRIPT"; then
 	print_test_result "Script uses 'docker exec -it' to enter" "PASS"
 else
 	print_test_result "Script uses 'docker exec -it' to enter" "FAIL"
